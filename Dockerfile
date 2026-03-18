@@ -1,23 +1,28 @@
-# Python 3.10 sürümünü Bullseye altyapısıyla kullanıyoruz (En kararlı sürüm)
-FROM python:3.10-slim-bullseye
+# Python 3.13 slim sürümü hem hafif hem de en güncel özelliklere sahiptir
+FROM python:3.13-slim
 
-# Sistem güncellemelerini yap ve müzik botu için ŞART olan paketleri kur
+# Sistem güncellemeleri ve müzik botu için gerekli bağımlılıklar
+# ffmpeg: Ses işleme için ŞART
+# build-essential & gcc: Bazı Python paketlerinin derlenmesi için gerekli
 RUN apt-get update && apt-get install -y \
     ffmpeg \
+    build-essential \
     gcc \
-    python3-dev \
-    libsndio-dev \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
-# Çalışma dizinini /app olarak ayarla
+# Çalışma dizini
 WORKDIR /app
 
-# Projedeki tüm dosyaları konteyner içine kopyala
+# Önce sadece requirements kopyalanır (Docker cache avantajı için)
+COPY requirements.txt .
+
+# Bağımlılıkları kur
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Projedeki tüm dosyaları kopyala
 COPY . .
 
-# Pip'i güncelle ve kütüphane çakışmalarını aşmak için legacy-resolver kullan
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir --use-deprecated=legacy-resolver -r requirements.txt
-
-# Botu çalıştıracak ana komut
+# Botu çalıştır
 CMD ["python", "main.py"]
