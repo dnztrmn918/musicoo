@@ -1,21 +1,23 @@
-# Daha güncel ve sorunsuz olan Bullseye sürümüne geçtik
+# Python 3.10 sürümünü Bullseye altyapısıyla kullanıyoruz (En kararlı sürüm)
 FROM python:3.10-slim-bullseye
 
-# Sistem paketlerini kuruyoruz
+# Sistem güncellemelerini yap ve müzik botu için ŞART olan paketleri kur
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     gcc \
     python3-dev \
+    libsndio-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Çalışma dizini
+# Çalışma dizinini /app olarak ayarla
 WORKDIR /app
 
-# Dosyaları kopyala
+# Projedeki tüm dosyaları konteyner içine kopyala
 COPY . .
 
-# Kütüphaneleri kur
-RUN pip install --no-cache-dir -r requirements.txt
+# Pip'i güncelle ve kütüphane çakışmalarını aşmak için legacy-resolver kullan
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir --use-deprecated=legacy-resolver -r requirements.txt
 
-# Botu çalıştır
+# Botu çalıştıracak ana komut
 CMD ["python", "main.py"]
