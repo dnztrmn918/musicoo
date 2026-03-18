@@ -4,7 +4,7 @@ from pytgcalls.types import MediaStream
 from yt_dlp import YoutubeDL
 from config import Config
 
-# Yeni pyrogram sürümü için session tanımlaması böyledir:
+# Pyrofork için doğru asistan tanımlaması
 assistant = Client(
     "Assistant", 
     api_id=Config.API_ID, 
