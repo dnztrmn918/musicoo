@@ -47,7 +47,7 @@ async def play(client, message):
 @app.on_message(filters.command(["stop", "end"]) & filters.group)
 async def stop_cmd(client, message):
     try:
-        await call_py.leave_group_call(message.chat.id)
+        await call_py.leave_call(message.chat.id)
         queue.clear()
         await message.reply_text("⏹ **Müzik durduruldu.**")
     except:
