@@ -1,6 +1,5 @@
 pyrogram
-https://github.com/pytgcalls/pytgcalls/archive/master.zip
+tgcrypto
+pytgcalls>=2.0.0
 yt-dlp
-ffmpeg-python
 python-dotenv
-TgCrypto
