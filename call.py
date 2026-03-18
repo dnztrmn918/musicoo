@@ -4,10 +4,7 @@ from pytgcalls.types import AudioPiped
 from yt_dlp import YoutubeDL
 from config import Config
 
-# Asistan (Userbot)
 assistant = Client("Assistant", api_id=Config.API_ID, api_hash=Config.API_HASH, session_string=Config.STRING_SESSION)
-
-# Ses motoru (v2.x modern yapısı)
 call_py = PyTgCalls(assistant)
 
 ydl_opts = {
@@ -23,8 +20,6 @@ queue = []
 def get_video_info(query):
     with YoutubeDL(ydl_opts) as ydl:
         try:
-            # download=True kalsın diyorsan dosya yoluyla, 
-            # download=False yaparsan doğrudan URL ile oynatabiliriz.
             info = ydl.extract_info(f"ytsearch:{query}", download=True)["entries"][0]
             return {
                 "id": info["id"],
@@ -38,7 +33,6 @@ def get_video_info(query):
 
 async def play_music(chat_id, video_info):
     try:
-        # Pytgcalls v2.x'te join_group_call kullanılır
         await call_py.join_group_call(
             chat_id,
             AudioPiped(video_info["file_path"])
