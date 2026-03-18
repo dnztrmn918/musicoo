@@ -1,33 +1,33 @@
 import os
 import asyncio
 from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton, Message
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import Config
 from call import call_py, assistant, get_video_info, play_music, queue
 
 app = Client("MusicBot", api_id=Config.API_ID, api_hash=Config.API_HASH, bot_token=Config.BOT_TOKEN)
 
-# downloads klasörünü oluştur
 if not os.path.exists("downloads"):
     os.makedirs("downloads")
 
 @app.on_message(filters.command("start") & filters.private)
 async def start(client, message):
     await message.reply_text(
-        f"👋 **Merhaba {message.from_user.mention}!**\n\n🎵 Python 3.13 uyumlu güncel müzik botu aktif!",
+        f"👋 **Merhaba {message.from_user.mention}!**\n\n🎵 Müzik botu aktif ve Python 3.13 ile hazır.",
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("➕ Gruba Ekle", url=f"https://t.me/{client.me.username}?startgroup=true")],
-            [InlineKeyboardButton("📢 Kanal", url="https://t.me/KanalLinkiniz")]
+            [InlineKeyboardButton("➕ Gruba Ekle", url=f"https://t.me/{client.me.username}?startgroup=true")]
         ])
     )
 
 @app.on_message(filters.command("play") & filters.group)
-async def play(client, message: Message):
+async def play(client, message):
     query = " ".join(message.command[1:])
     if not query:
         return await message.reply_text("❌ Lütfen bir şarkı adı yazın.")
 
     m = await message.reply_text(f"🔍 `{query}` aranıyor...")
+    
+    # Not: Büyük botlarda get_video_info bir executor içinde çalıştırılmalıdır.
     info = get_video_info(query)
     
     if not info:
@@ -43,33 +43,27 @@ async def play(client, message: Message):
         )
         await m.delete()
     else:
-        await m.edit("❌ Sesli sohbetin açık olduğundan ve asistanın grupta olduğundan emin olun.")
+        await m.edit("❌ Sesli sohbet başlatılamadı.")
 
 @app.on_message(filters.command(["stop", "end"]) & filters.group)
 async def stop_cmd(client, message):
     try:
-        await call_py.leave_call(message.chat.id) # Güncel komut: leave_call
+        await call_py.leave_group_call(message.chat.id)
         queue.clear()
-        await message.reply_text("⏹ **Müzik durduruldu ve asistan ayrıldı.**")
+        await message.reply_text("⏹ **Müzik durduruldu.**")
     except:
         await message.reply_text("❌ Zaten çalan bir şey yok.")
 
-# KOMUT: /que (Kuyruk)
-@app.on_message(filters.command("que") & filters.group)
-async def que_cmd(client, message):
-    if not queue:
-        return await message.reply_text("🗒 Kuyruk boş.")
-    res = "🗒 **Sıradaki Şarkılar:**\n\n" + "\n".join([f"{i+1}. {t}" for i, t in enumerate(queue)])
-    await message.reply_text(res)
-
-# HEM BOTU HEM ASİSTANI AYNI ANDA BAŞLATAN MODERN DÖNGÜ
 async def main():
+    # Tüm servisleri eşzamanlı başlatıyoruz
     await app.start()
     await assistant.start()
     await call_py.start()
-    print("🚀 Bot ve Asistan Python 3.13 üzerinde aktif!")
+    print("🚀 Bot ve Asistan başarıyla başlatıldı!")
     await asyncio.Event().wait()
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("🛑 Bot kapatılıyor...")
