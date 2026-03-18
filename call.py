@@ -1,3 +1,11 @@
+import pyrogram.errors
+class GroupcallForbidden(Exception):
+    pass
+pyrogram.errors.GroupcallForbidden = GroupcallForbidden
+
+from pyrogram import Client
+from pytgcalls import PyTgCalls
+# ... kodun geri kalanı aynı şekilde devam edecek
 from pyrogram import Client
 from pytgcalls import PyTgCalls
 from pytgcalls.types import MediaStream
