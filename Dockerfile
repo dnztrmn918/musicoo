@@ -1,28 +1,23 @@
-# Python 3.13 slim sürümü hem hafif hem de en güncel özelliklere sahiptir
-FROM python:3.13-slim
+# Python 3.11-slim kullanımı bu kütüphaneler için en kararlı yoldur
+FROM python:3.11-slim
 
-# Sistem güncellemeleri ve müzik botu için gerekli bağımlılıklar
-# ffmpeg: Ses işleme için ŞART
-# build-essential & gcc: Bazı Python paketlerinin derlenmesi için gerekli
+# Gerekli sistem paketlerini kuruyoruz
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     build-essential \
     gcc \
     git \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Çalışma dizini
 WORKDIR /app
 
-# Önce sadece requirements kopyalanır (Docker cache avantajı için)
+# Bağımlılıkları kopyala ve kur
 COPY requirements.txt .
-
-# Bağımlılıkları kur
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Projedeki tüm dosyaları kopyala
-COPY . .
+# Tüm dosyaları kopyala
+COPY . . [cite: 2, 3]
 
-# Botu çalıştır
 CMD ["python", "main.py"]
