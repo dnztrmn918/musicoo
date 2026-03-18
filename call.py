@@ -1,22 +1,16 @@
 import os
 from pyrogram import Client
-from pytgcalls import PyTgCalls # Ana kütüphane
-from pytgcalls.types import MediaStream # Ses akışı için
+from pytgcalls import GroupCallFactory # YENİ YAPI: Factory kullanıyoruz
+from pytgcalls.types import MediaStream 
 from yt_dlp import YoutubeDL
 from config import Config
 
-# Asistan (Userbot) kurulumu
-assistant = Client(
-    "Assistant", 
-    api_id=Config.API_ID, 
-    api_hash=Config.API_HASH, 
-    session_string=Config.STRING_SESSION
-)
+# Asistan (Userbot)
+assistant = Client("Assistant", api_id=Config.API_ID, api_hash=Config.API_HASH, session_string=Config.STRING_SESSION)
 
-# Ses motoru kurulumu (Yeni Nesil Yapı)
-call_py = PyTgCalls(assistant)
+# Ses motoru kurulumu (v2.x Factory yapısı)
+call_py = GroupCallFactory(assistant).get_group_call()
 
-# YouTube ayarları
 ydl_opts = {
     "format": "bestaudio/best",
     "quiet": True,
@@ -39,23 +33,20 @@ def get_video_info(query):
                 "file_path": f"downloads/{info['id']}.mp3"
             }
         except Exception as e:
-            print(f"YouTube Hatası: {e}")
+            print(f"Hata: {e}")
             return None
 
 def saniyeyi_formatla(saniye):
-    if saniye is None: 
-        return "Bilinmiyor"
+    if saniye is None: return "Bilinmiyor"
     dakika, saniye = divmod(saniye, 60)
     return f"{dakika:02d}:{saniye:02d}"
 
 async def play_music(chat_id, video_info):
     try:
-        # v2.x sürümünde .play() metodu kullanılır
-        await call_py.play(
-            chat_id,
-            MediaStream(video_info["file_path"])
-        )
+        # Yeni sürüm komutları
+        await call_py.join(chat_id)
+        await call_py.start_audio(video_info["file_path"])
         return True
     except Exception as e:
-        print(f"Oynatma Hatası: {e}")
+        print(f"Oynatma hatası: {e}")
         return False
