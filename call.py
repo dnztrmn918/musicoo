@@ -1,7 +1,7 @@
 import os
 from pyrogram import Client
-from pytgcalls import PyTgCalls
-from pytgcalls.types import MediaStream 
+from pytgcalls import PyTgCalls # Ana kütüphane
+from pytgcalls.types import MediaStream # Ses akışı için
 from yt_dlp import YoutubeDL
 from config import Config
 
@@ -13,7 +13,7 @@ assistant = Client(
     session_string=Config.STRING_SESSION
 )
 
-# Ses motoru kurulumu
+# Ses motoru kurulumu (Yeni Nesil Yapı)
 call_py = PyTgCalls(assistant)
 
 # YouTube ayarları
@@ -50,6 +50,7 @@ def saniyeyi_formatla(saniye):
 
 async def play_music(chat_id, video_info):
     try:
+        # v2.x sürümünde .play() metodu kullanılır
         await call_py.play(
             chat_id,
             MediaStream(video_info["file_path"])
