@@ -1,6 +1,6 @@
 from pyrogram import Client
 from pytgcalls import PyTgCalls
-from pytgcalls.types import AudioPiped
+from pytgcalls.types import MediaStream
 from yt_dlp import YoutubeDL
 from config import Config
 
@@ -33,9 +33,9 @@ def get_video_info(query):
 
 async def play_music(chat_id, video_info):
     try:
-        await call_py.join_group_call(
+        await call_py.play(
             chat_id,
-            AudioPiped(video_info["file_path"])
+            MediaStream(video_info["file_path"])
         )
         return True
     except Exception as e:
