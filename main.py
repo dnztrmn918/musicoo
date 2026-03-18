@@ -13,7 +13,7 @@ if not os.path.exists("downloads"):
 @app.on_message(filters.command("start") & filters.private)
 async def start(client, message):
     await message.reply_text(
-        f"👋 **Merhaba {message.from_user.mention}!**\n\n🎵 Müzik botu aktif ve Python 3.13 ile hazır.",
+        f"👋 **Merhaba {message.from_user.mention}!**\n\n🎵 Müzik botu aktif ve Python 3.11 ile hazır.",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("➕ Gruba Ekle", url=f"https://t.me/{client.me.username}?startgroup=true")]
         ])
@@ -27,7 +27,6 @@ async def play(client, message):
 
     m = await message.reply_text(f"🔍 `{query}` aranıyor...")
     
-    # Not: Büyük botlarda get_video_info bir executor içinde çalıştırılmalıdır.
     info = get_video_info(query)
     
     if not info:
@@ -55,7 +54,6 @@ async def stop_cmd(client, message):
         await message.reply_text("❌ Zaten çalan bir şey yok.")
 
 async def main():
-    # Tüm servisleri eşzamanlı başlatıyoruz
     await app.start()
     await assistant.start()
     await call_py.start()
