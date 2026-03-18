@@ -4,8 +4,13 @@ from pytgcalls.types import MediaStream
 from yt_dlp import YoutubeDL
 from config import Config
 
-# DEĞİŞEN KISIM BURASI: session_string kelimesini sildik, değişkeni başa aldık.
-assistant = Client(Config.STRING_SESSION, api_id=Config.API_ID, api_hash=Config.API_HASH)
+# Yeni pyrogram sürümü için session tanımlaması böyledir:
+assistant = Client(
+    "Assistant", 
+    api_id=Config.API_ID, 
+    api_hash=Config.API_HASH, 
+    session_string=Config.STRING_SESSION
+)
 call_py = PyTgCalls(assistant)
 
 ydl_opts = {
