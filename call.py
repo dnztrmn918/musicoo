@@ -1,22 +1,13 @@
 import os
 from pyrogram import Client
 from pytgcalls import PyTgCalls
-from pytgcalls.types import MediaStream 
+from pytgcalls.types import MediaStream # HATA BURADAYDI: MediaStream yaptık
 from yt_dlp import YoutubeDL
 from config import Config
 
-# Asistan (Userbot) kurulumu
-assistant = Client(
-    "Assistant", 
-    api_id=Config.API_ID, 
-    api_hash=Config.API_HASH, 
-    session_string=Config.STRING_SESSION
-)
-
-# Ses motoru kurulumu
+assistant = Client("Assistant", api_id=Config.API_ID, api_hash=Config.API_HASH, session_string=Config.STRING_SESSION)
 call_py = PyTgCalls(assistant)
 
-# YouTube ayarları (En güncel yt-dlp standartları)
 ydl_opts = {
     "format": "bestaudio/best",
     "quiet": True,
@@ -39,17 +30,22 @@ def get_video_info(query):
                 "file_path": f"downloads/{info['id']}.mp3"
             }
         except Exception as e:
-            print(f"Arama Hatası: {e}")
+            print(f"Hata: {e}")
             return None
+
+def saniyeyi_formatla(saniye):
+    if saniye is None: return "Bilinmiyor"
+    dakika, saniye = divmod(saniye, 60)
+    return f"{02d}:{saniye:02d}"
 
 async def play_music(chat_id, video_info):
     try:
-        # GÜNCEL KOMUT: play_music yerine sadece play kullanılır
+        # Yeni sürümde .play() kullanılır
         await call_py.play(
             chat_id,
             MediaStream(video_info["file_path"])
         )
         return True
     except Exception as e:
-        print(f"Oynatma Hatası: {e}")
+        print(f"Oynatma hatası: {e}")
         return False
