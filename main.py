@@ -1,11 +1,12 @@
 import os
 import asyncio
-from pyrogram import Client, filters
+from pyrogram import Client, filters, idle
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import Config
 from call import call_py, assistant, get_video_info, play_music, queue
 
-app = Client("MusicBot", api_id=Config.API_ID, api_hash=Config.API_HASH, bot_token=Config.BOT_TOKEN)
+# DÜZELTME 1: "MusicBot" yerine ":memory:" kullanıyoruz. Hayalet dosyaları engeller.
+app = Client(":memory:", api_id=Config.API_ID, api_hash=Config.API_HASH, bot_token=Config.BOT_TOKEN)
 
 if not os.path.exists("downloads"):
     os.makedirs("downloads")
@@ -59,7 +60,8 @@ async def main():
     await assistant.start()
     await call_py.start()
     print("🚀 Bot ve Asistan başarıyla başlatıldı!")
-    await asyncio.Event().wait()
+    # DÜZELTME 2: Pyrogram'ın gerçek dinleme motorunu çalıştırıyoruz.
+    await idle()
 
 if __name__ == "__main__":
     try:
