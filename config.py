@@ -8,7 +8,7 @@ class Config:
     API_HASH = os.getenv("API_HASH", "")
     
     # SADECE BURAYI DEĞİŞTİRİYORUZ. Kodu direkt içine gömüyoruz:
-    BOT_TOKEN = "8372013267:AAHAcPRWYVclQRsePZVmPwBFqzwP8yfXS8g" 
+    BOT_TOKEN = "8372013267:AAEtgCbYX4v2VEBBRefYlSbD5THj_hUz9SA" 
     
     STRING_SESSION = os.getenv("STRING_SESSION", "")
 
