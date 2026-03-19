@@ -4,9 +4,9 @@ from pytgcalls.types import MediaStream
 from yt_dlp import YoutubeDL
 from config import Config
 
-# Pyrofork için doğru asistan tanımlaması
+# DÜZELTME: "Assistant" yerine ":memory:" kullanıyoruz.
 assistant = Client(
-    "Assistant", 
+    ":memory:", 
     api_id=Config.API_ID, 
     api_hash=Config.API_HASH, 
     session_string=Config.STRING_SESSION
