@@ -12,6 +12,7 @@ if not os.path.exists("downloads"):
 
 @app.on_message(filters.command("start") & filters.private)
 async def start(client, message):
+    print(f"📥 BİRİ BOTA MESAJ ATTI: {message.from_user.first_name}")
     await message.reply_text(
         f"👋 **Merhaba {message.from_user.mention}!**\n\n🎵 Müzik botu aktif ve Python 3.11 ile hazır.",
         reply_markup=InlineKeyboardMarkup([
