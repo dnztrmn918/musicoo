@@ -5,8 +5,13 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import Config
 from call import call_py, assistant, get_video_info, play_music, queue
 
-# DÜZELTME 1: "MusicBot" yerine ":memory:" kullanıyoruz. Hayalet dosyaları engeller.
-app = Client(":memory:", api_id=Config.API_ID, api_hash=Config.API_HASH, bot_token=Config.BOT_TOKEN)
+# DÜZELTME: İki Client'ın çakışmaması için ":memory:" yerine "ZirveBot" kullanıyoruz.
+app = Client(
+    "ZirveBot", 
+    api_id=Config.API_ID, 
+    api_hash=Config.API_HASH, 
+    bot_token=Config.BOT_TOKEN
+)
 
 if not os.path.exists("downloads"):
     os.makedirs("downloads")
@@ -15,7 +20,7 @@ if not os.path.exists("downloads"):
 async def start(client, message):
     print(f"📥 BİRİ BOTA MESAJ ATTI: {message.from_user.first_name}")
     await message.reply_text(
-        f"👋 **Merhaba {message.from_user.mention}!**\n\n🎵 Müzik botu aktif ve Python 3.11 ile hazır.",
+        f"👋 **Merhaba {message.from_user.mention}!**\n\n🎵 Zirve Müzik botu aktif ve kullanıma hazır.",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("➕ Gruba Ekle", url=f"https://t.me/{client.me.username}?startgroup=true")]
         ])
@@ -44,7 +49,7 @@ async def play(client, message):
         )
         await m.delete()
     else:
-        await m.edit("❌ Sesli sohbet başlatılamadı.")
+        await m.edit("❌ Sesli sohbet başlatılamadı. Asistanın grupta ve yetkili olduğundan emin olun.")
 
 @app.on_message(filters.command(["stop", "end"]) & filters.group)
 async def stop_cmd(client, message):
@@ -60,10 +65,10 @@ async def main():
     await assistant.start()
     await call_py.start()
     
-    # BU SATIRI EKLİYORUZ: Botun kim olarak giriş yaptığını loglara yazdıracak
+    # Botun başarılı giriş yaptığını teyit eden log:
     me = await app.get_me()
     print(f"🚀 Başarılı! Çalışan Bot: @{me.username}") 
-    print("🚀 Bot ve Asistan başarıyla başlatıldı!")
+    print("🚀 Bot ve Asistan başarıyla başlatıldı, mesajlar dinleniyor...")
     
     await idle()
 
