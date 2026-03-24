@@ -5,12 +5,13 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from config import Config
 from call import call_py, assistant, get_video_info, play_music, queue
 
-# DÜZELTME: İki Client'ın çakışmaması için ":memory:" yerine "ZirveBot" kullanıyoruz.
+# DÜZELTME: in_memory=True ekleyerek Koyeb'in dosya kilitleme sorununu (sağır kalma) çözüyoruz.
 app = Client(
     "ZirveBot", 
     api_id=Config.API_ID, 
     api_hash=Config.API_HASH, 
-    bot_token=Config.BOT_TOKEN
+    bot_token=Config.BOT_TOKEN,
+    in_memory=True
 )
 
 if not os.path.exists("downloads"):
@@ -18,7 +19,8 @@ if not os.path.exists("downloads"):
 
 @app.on_message(filters.command("start") & filters.private)
 async def start(client, message):
-    print(f"📥 BİRİ BOTA MESAJ ATTI: {message.from_user.first_name}")
+    # flush=True ile logun saniyesinde Koyeb paneline düşmesini sağlıyoruz
+    print(f"📥 BİRİ BOTA MESAJ ATTI: {message.from_user.first_name}", flush=True) 
     await message.reply_text(
         f"👋 **Merhaba {message.from_user.mention}!**\n\n🎵 Zirve Müzik botu aktif ve kullanıma hazır.",
         reply_markup=InlineKeyboardMarkup([
@@ -67,8 +69,8 @@ async def main():
     
     # Botun başarılı giriş yaptığını teyit eden log:
     me = await app.get_me()
-    print(f"🚀 Başarılı! Çalışan Bot: @{me.username}") 
-    print("🚀 Bot ve Asistan başarıyla başlatıldı, mesajlar dinleniyor...")
+    print(f"🚀 Başarılı! Çalışan Bot: @{me.username}", flush=True) 
+    print("🚀 Bot ve Asistan başarıyla başlatıldı, mesajlar dinleniyor...", flush=True)
     
     await idle()
 
@@ -76,4 +78,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("🛑 Bot kapatılıyor...")
+        print("🛑 Bot kapatılıyor...", flush=True)
