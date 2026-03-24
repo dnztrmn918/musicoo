@@ -4,12 +4,13 @@ from pytgcalls.types import MediaStream
 from yt_dlp import YoutubeDL
 from config import Config
 
-# DÜZELTME: Bot ile veritabanı çakışmaması için ":memory:" yerine "ZirveAsistan" kullanıyoruz.
+# DÜZELTME: Asistan için de in_memory=True ekliyoruz.
 assistant = Client(
     "ZirveAsistan", 
     api_id=Config.API_ID, 
     api_hash=Config.API_HASH, 
-    session_string=Config.STRING_SESSION
+    session_string=Config.STRING_SESSION,
+    in_memory=True
 )
 call_py = PyTgCalls(assistant)
 
