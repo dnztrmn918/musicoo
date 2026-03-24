@@ -8,13 +8,10 @@ class Config:
     # API_ID'yi alırken olası boşlukları siler (.strip), yoksa varsayılan 0 yapar.
     API_ID = int(os.getenv("API_ID", "0").strip())
     
-    # API_HASH ve STRING_SESSION değerlerini panelden çeker.
+    # Tüm kritik verileri panelden çeker ve boşluk hatalarını engeller.
     API_HASH = os.getenv("API_HASH", "").strip()
-    STRING_SESSION = os.getenv("STRING_SESSION", "").strip()
-    
-    # BOT_TOKEN'ı da artık panelden yönetebilmen için değişkene bağladık.
-    # Eğer istersen tırnak içine eski tokenini tekrar yazabilirsin ama panelden eklemek daha profesyoneldir.
     BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+    STRING_SESSION = os.getenv("STRING_SESSION", "").strip()
 
     # Hata kontrolü: Kritik veriler eksikse loglarda uyarır.
     if not API_ID or not API_HASH or not BOT_TOKEN:
