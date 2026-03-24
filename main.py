@@ -59,8 +59,12 @@ async def main():
     await app.start()
     await assistant.start()
     await call_py.start()
+    
+    # BU SATIRI EKLİYORUZ: Botun kim olarak giriş yaptığını loglara yazdıracak
+    me = await app.get_me()
+    print(f"🚀 Başarılı! Çalışan Bot: @{me.username}") 
     print("🚀 Bot ve Asistan başarıyla başlatıldı!")
-    # DÜZELTME 2: Pyrogram'ın gerçek dinleme motorunu çalıştırıyoruz.
+    
     await idle()
 
 if __name__ == "__main__":
