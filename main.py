@@ -19,6 +19,7 @@ if not os.path.exists("downloads"):
 @app.on_message(filters.command("start") & filters.private)
 async def start(client, message):
     print(f"📥 BİRİ BOTA MESAJ ATTI: {message.from_user.first_name}", flush=True) 
+    # Mesajın "Zirve2" için özel olduğunu belirten basit bir menü
     await message.reply_text(
         f"👋 **Merhaba {message.from_user.mention}!**\n\n🎵 Zirve Müzik botu aktif ve kullanıma hazır.",
         reply_markup=InlineKeyboardMarkup([
@@ -69,6 +70,6 @@ async def start_services():
     await idle()
 
 if __name__ == "__main__":
-    # Döngü (Event Loop) kilitlemesini çözen sihirli kısım burası:
+    print("Sistem başlatılıyor...", flush=True)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(start_services())
