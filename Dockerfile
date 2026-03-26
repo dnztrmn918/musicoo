@@ -1,21 +1,23 @@
-# Python 3.10-slim kullanarak hem boyutu küçültüyoruz hem de 3.9 uyarısını kaldırıyoruz
+# Orijinal dosyandaki Python 3.9 yerine, hata almamak için 3.10-slim kullanıyoruz
 FROM python:3.10-slim
 
-# Çalışma dizinini belirliyoruz
+# Çalışma dizini senin dosyandaki gibi /app
 WORKDIR /app
 
-# Sistem bağımlılıklarını yüklüyoruz (FFmpeg ses işleme için mecburidir)
+# Koyeb ve Sesli Sohbet için gerekli sistem araçları (FFmpeg ve Git)
+# Senin orijinal dosyandaki kurulum mantığını koruyarak güncelledim
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     git \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-# Tüm dosyaları konteynere kopyalıyoruz
+# Tüm dosyaları kopyalıyoruz
 COPY . .
 
-# Python kütüphanelerini yüklüyoruz
-RUN pip install --no-cache-dir -r requirements.txt
+# Gereksinimleri yüklüyoruz (requirements.txt içindekiler)
+RUN pip3 install --upgrade pip
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Botu başlatan komut
+# Botu başlatan komut (Senin main.py dosyanı çalıştırır)
 CMD ["python3", "main.py"]
