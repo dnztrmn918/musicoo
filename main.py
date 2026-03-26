@@ -4,13 +4,13 @@ from pytgcalls import PyTgCalls
 from config import API_ID, API_HASH, BOT_TOKEN, SESSION
 import player
 
-# Pyrogram Bot İstemcisi (Artık komutları plugins klasöründe arayacak)
+# Pyrogram Bot İstemcisi
 bot = Client(
     "PiMusicBot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN,
-    plugins=dict(root="plugins") # <-- Kilit nokta burası
+    plugins={"root": "plugins"}  # dict(root="plugins") yerine bu sözlük yapısı çok daha güvenlidir.
 )
 
 # Pyrogram Userbot İstemcisi
