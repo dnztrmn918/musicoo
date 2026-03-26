@@ -4,10 +4,11 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 @Client.on_message(filters.command("start") & filters.private)
 async def start(client, message):
-    logo_path = "logo.jpg" # Botun ana dizininde logo.jpg olmalı
+    # Logoyu 'plugins' klasörünün içinde arar
+    logo_path = "./plugins/logo.jpg" 
     
     caption_text = (
-        "👋 **Selam! Ben Pi-Müzik Botu.**\n\n"
+        "👋 **Merhaba! Ben Pi-Müzik Botu.**\n\n"
         "🎵 Gruplarında sesli sohbet üzerinden yüksek kalitede müzik çalabilirim.\n\n"
         "🚀 **Hemen başlamak için:**\n"
         "1️⃣ Beni bir gruba ekle.\n"
@@ -21,7 +22,6 @@ async def start(client, message):
         ],
         [
             InlineKeyboardButton("🛠️ Yardım & Komutlar", callback_data="help_menu"),
-            InlineKeyboardButton("📣 Destek", url="https://t.me/SizinDestekKanaliniz")
         ]
     ])
 
