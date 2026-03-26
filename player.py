@@ -1,6 +1,6 @@
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pytgcalls import PyTgCalls
-from pytgcalls.types import AudioPiped
+from pytgcalls.types import MediaStream
 
 music_queue = {}
 call = None
@@ -36,7 +36,7 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     if len(music_queue[chat_id]) == 1:
         await call.join_group_call(
             chat_id,
-            AudioPiped(song_info['url'])
+            MediaStream(song_info['url'])
         )
         return True
     return False
