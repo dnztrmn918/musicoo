@@ -35,10 +35,18 @@ def get_player_ui():
     ])
 
 def format_playing_message(song_info, requested_by):
+    # Süre formatı (Saniye cinsinden gelirse dakikaya çevirir)
+    duration = song_info.get('duration')
+    if isinstance(duration, int):
+        mins, secs = divmod(duration, 60)
+        duration = f"{mins:02d}:{secs:02d}"
+    else:
+        duration = "Bilinmiyor"
+
     return (
         f"🎵 **Şu An Oynatılıyor**\n\n"
         f"📌 **İsim:** [{song_info['title']}]({song_info['webpage_url']})\n"
-        f"⏱ **Süre:** `{song_info.get('duration', 'Bilinmiyor')}`\n"
+        f"⏱ **Süre:** `{duration}`\n"
         f"👤 **Talep Eden:** {requested_by}"
     )
 
