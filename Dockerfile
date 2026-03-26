@@ -1,17 +1,21 @@
-FROM python:3.9-slim
+# Python 3.10-slim kullanarak hem boyutu küçültüyoruz hem de 3.9 uyarısını kaldırıyoruz
+FROM python:3.10-slim
 
-# curl aracı ile Node.js 18 sürümünü indirip kuruyoruz (FFmpeg ve diğerleriyle birlikte)
-RUN apt-get update && apt-get install -y curl ffmpeg git gcc python3-dev && \
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/*
-
+# Çalışma dizinini belirliyoruz
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip --ignore-installed
-RUN pip install --no-cache-dir -r requirements.txt --ignore-installed
+# Sistem bağımlılıklarını yüklüyoruz (FFmpeg ses işleme için mecburidir)
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    git \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
 
+# Tüm dosyaları konteynere kopyalıyoruz
 COPY . .
 
-CMD ["python", "main.py"]
+# Python kütüphanelerini yüklüyoruz
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Botu başlatan komut
+CMD ["python3", "main.py"]
