@@ -1,26 +1,9 @@
-import os
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from pytgcalls import PyTgCalls
 from pytgcalls.types import AudioPiped
 
 # Şarkı sırası ve çağrı yönetimi
 music_queue = {}
-call = None 
-
-# YouTube'un yeni güvenlik duvarlarını aşan nihai ayarlar
-YDL_OPTS = {
-    "format": "bestaudio/best",
-    "cookiefile": "cookies.txt", 
-    "quiet": True,
-    "no_warnings": True,
-    "nocheckcertificate": True,
-    "extractor_args": {
-        "youtube": {
-            "player_client": ["android", "web"],
-            "player_skip": ["js"] # Eğer JS engeli aşılmazsa atla
-        }
-    }
-}
+call = None  # main.py tarafından doldurulacak
 
 def get_player_ui():
     return InlineKeyboardMarkup([
@@ -35,6 +18,7 @@ def get_player_ui():
     ])
 
 def format_playing_message(song_info, requested_by):
+    # Süre formatı (Saniye gelirse dakikaya çevirir)
     duration = song_info.get('duration')
     if isinstance(duration, int):
         mins, secs = divmod(duration, 60)
@@ -57,7 +41,7 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
     
     if len(music_queue[chat_id]) == 1:
-        # Şarkıyı PyTgCalls üzerinden çal
+        # search.py'den gelen temiz url ile oynatmayı başlatır
         await call.join_group_call(
             chat_id,
             AudioPiped(song_info['url'])
