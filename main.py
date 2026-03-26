@@ -1,25 +1,19 @@
-# --- HATA GİDERİCİ YAMA (MOCKING) ---
-import pyrogram.errors
-class GroupcallForbidden(Exception): pass
-pyrogram.errors.GroupcallForbidden = GroupcallForbidden
-# ------------------------------------
-
 import asyncio
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
 from config import API_ID, API_HASH, BOT_TOKEN, SESSION
 import player
 
-# Pyrogram Bot İstemcisi (plugins klasörü olarak ana dizini okur, start ve play dosyalarını otomatik tanır)
+# Pyrogram Bot İstemcisi (Artık komutları plugins klasöründe arayacak)
 bot = Client(
     "PiMusicBot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN,
-    plugins=dict(root=".")
+    plugins=dict(root="plugins") # <-- Kilit nokta burası
 )
 
-# Pyrogram Userbot İstemcisi (Sesli sohbete katılmak için gerekli)
+# Pyrogram Userbot İstemcisi
 user_app = Client(
     "PiMusicUser",
     api_id=API_ID,
@@ -29,7 +23,7 @@ user_app = Client(
 
 # PyTgCalls Başlatma
 call = PyTgCalls(user_app)
-player.call = call # Oynatıcı dosyasına call objesini aktarıyoruz
+player.call = call
 
 async def main():
     print("İstemciler başlatılıyor...")
@@ -38,7 +32,6 @@ async def main():
     await call.start()
     print("✅ Pi-Müzik Botu Başarıyla Çalışıyor!")
     
-    # Botun kapanmasını engellemek için idle() kullanıyoruz
     await idle()
 
 if __name__ == "__main__":
