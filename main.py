@@ -4,16 +4,14 @@ from pytgcalls import PyTgCalls
 from config import API_ID, API_HASH, BOT_TOKEN, SESSION
 import player
 
-# Pyrogram Bot İstemcisi
 bot = Client(
     "PiMusicBot",
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=BOT_TOKEN,
-    plugins={"root": "plugins"}  # dict(root="plugins") yerine bu sözlük yapısı çok daha güvenlidir.
+    plugins={"root": "plugins"} 
 )
 
-# Pyrogram Userbot İstemcisi
 user_app = Client(
     "PiMusicUser",
     api_id=API_ID,
@@ -21,7 +19,6 @@ user_app = Client(
     session_string=SESSION
 )
 
-# PyTgCalls Başlatma
 call = PyTgCalls(user_app)
 player.call = call
 
