@@ -1,3 +1,9 @@
+# --- HATA GİDERİCİ YAMA (MOCKING) ---
+import pyrogram.errors
+class GroupcallForbidden(Exception): pass
+pyrogram.errors.GroupcallForbidden = GroupcallForbidden
+# ------------------------------------
+
 import asyncio
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
