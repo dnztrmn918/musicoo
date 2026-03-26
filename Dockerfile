@@ -2,7 +2,7 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Node.js, FFmpeg ve sistem araçlarını kuruyoruz
+# Gerekli sistem araçlarını, Node.js ve FFmpeg'i kuruyoruz
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     git \
@@ -13,8 +13,8 @@ RUN apt-get update && apt-get install -y \
 
 COPY . .
 
-# Python bağımlılıklarını yüklüyoruz
+# Bağımlılıkları kur
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Botu başlat
+# Botu çalıştır
 CMD ["python3", "main.py"]
