@@ -2,7 +2,6 @@ from pyrogram import Client, filters
 from search import search_youtube
 import player
 
-# Hem / hem de . işareti ile çalışır
 PREFIXES = ["/", "."]
 
 @Client.on_message(filters.command(["play", "oynat"], prefixes=PREFIXES) & filters.group)
@@ -21,7 +20,6 @@ async def play_command(client, message):
         
         if is_playing:
             await status_msg.delete()
-            # Şarkı çalmaya başladı, arayüzü gönder
             if song_info['thumbnail']:
                 await message.reply_photo(
                     photo=song_info['thumbnail'],
