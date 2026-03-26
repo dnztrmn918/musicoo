@@ -1,13 +1,13 @@
 import yt_dlp
 
 def search_youtube(query):
-    # Çerezleri ve anti-bot ayarlarını BURAYA DA eklemek zorundayız!
+    # Çerezleri ve anti-bot ayarlarını sadece arama motorunda tutuyoruz
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch',
-        'cookiefile': 'cookies.txt',  # KRİTİK SATIR!
+        'cookiefile': 'cookies.txt',  # İndirdiğin doğru dosya
         'nocheckcertificate': True,
         'extractor_args': {
             'youtube': {
