@@ -5,17 +5,15 @@ from pytgcalls.types import AudioPiped
 
 # Şarkı sırası ve çağrı yönetimi
 music_queue = {}
-call = None  # Bu, main.py içindeki PyTgCalls objesi ile bağlanmalı
+call = None  # Bu değişken main.py tarafından doldurulacak
 
-# YouTube Bot Engelini ve SABR Hatasını Aşan Gelişmiş Ayarlar
+# YouTube SABR ve Bot Engelini Aşan Ayarlar
 YDL_OPTS = {
     "format": "bestaudio/best",
-    "cookiefile": "cookies.txt",  # Yüklediğin çerez dosyasını kullanır
+    "cookiefile": "cookies.txt", 
     "quiet": True,
     "no_warnings": True,
     "nocheckcertificate": True,
-    "source_address": "0.0.0.0",
-    # YouTube'un yeni kısıtlamalarını (SABR) aşmak için istemci taklidi:
     "extractor_args": {
         "youtube": {
             "player_client": ["android", "ios"],
@@ -37,20 +35,11 @@ def get_player_ui():
     ])
 
 def format_playing_message(song_info, requested_by):
-    # Süre formatı (Saniye cinsinden gelirse dakikaya çevirir)
-    duration = song_info.get('duration')
-    if isinstance(duration, int):
-        mins, secs = divmod(duration, 60)
-        duration = f"{mins:02d}:{secs:02d}"
-    else:
-        duration = "Bilinmiyor"
-
     return (
         f"🎵 **Şu An Oynatılıyor**\n\n"
         f"📌 **İsim:** [{song_info['title']}]({song_info['webpage_url']})\n"
-        f"⏱ **Süre:** `{duration}`\n"
-        f"👤 **Talep Eden:** {requested_by}\n\n"
-        f"🎧 **Pi-Müzik Keyifli Dinlemeler Diler!**"
+        f"⏱ **Süre:** `{song_info.get('duration', 'Bilinmiyor')}`\n"
+        f"👤 **Talep Eden:** {requested_by}"
     )
 
 async def add_to_queue_or_play(chat_id, song_info, requested_by):
@@ -61,4 +50,11 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
         
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
     
-    if len(music_queue[chat_id])
+    if len(music_queue[chat_id]) == 1:
+        # ASİSTANIN SOHBETE GİRMESİNİ SAĞLAYAN KRİTİK KOMUT
+        await call.join_group_call(
+            chat_id,
+            AudioPiped(song_info['url'])
+        )
+        return True
+    return False
