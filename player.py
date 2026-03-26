@@ -7,7 +7,7 @@ from pytgcalls.types import AudioPiped
 music_queue = {}
 call = None 
 
-# YouTube SABR ve Bot Engelini Aşan Ayarlar
+# YouTube'un yeni güvenlik duvarlarını aşan nihai ayarlar
 YDL_OPTS = {
     "format": "bestaudio/best",
     "cookiefile": "cookies.txt", 
@@ -16,8 +16,8 @@ YDL_OPTS = {
     "nocheckcertificate": True,
     "extractor_args": {
         "youtube": {
-            "player_client": ["android", "ios"],
-            "skip": ["webpage", "hls"]
+            "player_client": ["android", "web"],
+            "player_skip": ["js"] # Eğer JS engeli aşılmazsa atla
         }
     }
 }
@@ -57,6 +57,7 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
     
     if len(music_queue[chat_id]) == 1:
+        # Şarkıyı PyTgCalls üzerinden çal
         await call.join_group_call(
             chat_id,
             AudioPiped(song_info['url'])
