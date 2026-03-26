@@ -1,11 +1,20 @@
 import yt_dlp
 
 def search_youtube(query):
+    # Çerezleri ve anti-bot ayarlarını BURAYA DA eklemek zorundayız!
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
-        'default_search': 'ytsearch'
+        'default_search': 'ytsearch',
+        'cookiefile': 'cookies.txt',  # KRİTİK SATIR!
+        'nocheckcertificate': True,
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web'],
+                'player_skip': ['js']
+            }
+        }
     }
     
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
