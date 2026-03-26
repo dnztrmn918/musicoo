@@ -1,9 +1,19 @@
+import os
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pytgcalls import PyTgCalls
 from pytgcalls.types import AudioPiped
 
+# Şarkı sırası ve çağrı yönetimi
 music_queue = {}
-call = None
+call = None  # Bu, main.py içindeki PyTgCalls objesi ile bağlanmalı
+
+# YouTube Bot Engelini Aşan Ayarlar
+YDL_OPTS = {
+    "format": "bestaudio/best",
+    "cookiefile": "cookies.txt",  # Yüklediğin çerez dosyasını burada kullanıyoruz
+    "quiet": True,
+    "no_warnings": True,
+}
 
 def get_player_ui():
     return InlineKeyboardMarkup([
@@ -21,7 +31,7 @@ def format_playing_message(song_info, requested_by):
     return (
         f"🎵 **Şu An Oynatılıyor**\n\n"
         f"📌 **İsim:** [{song_info['title']}]({song_info['webpage_url']})\n"
-        f"⏱ **Süre:** `{song_info['duration']}`\n"
+        f"⏱ **Süre:** `{song_info.get('duration', 'Bilinmiyor')}`\n"
         f"👤 **Talep Eden:** {requested_by}"
     )
 
