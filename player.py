@@ -1,10 +1,9 @@
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pytgcalls import PyTgCalls
-from pytgcalls.types import MediaStream
+from pytgcalls.types import AudioPiped
 
-# Basit bellek içi kuyruk: {chat_id: [şarkı1, şarkı2, ...]}
 music_queue = {}
-call = None # main.py içinden atanacak
+call = None
 
 def get_player_ui():
     return InlineKeyboardMarkup([
@@ -35,10 +34,9 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
     
     if len(music_queue[chat_id]) == 1:
-        # Kuyrukta sadece bu varsa hemen oynat
         await call.join_group_call(
             chat_id,
-            MediaStream(song_info['url'])
+            AudioPiped(song_info['url'])
         )
-        return True # Oynatılmaya başlandı
-    return False # Kuyruğa eklendi
+        return True
+    return False
