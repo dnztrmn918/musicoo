@@ -1,28 +1,38 @@
+import os
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 @Client.on_message(filters.command("start") & filters.private)
-async def start_command(client, message):
-    bot_info = await client.get_me()
+async def start(client, message):
+    logo_path = "logo.jpg" # Botun ana dizininde logo.jpg olmalı
     
-    welcome_text = (
-        "🎵 **Pi-Müzik Botuna Hoş Geldiniz!**\n\n"
-        "Telegram gruplarınızda kesintisiz ve yüksek kaliteli müzik dinlemenizi sağlayan "
-        "gelişmiş bir altyapıya sahibim. Şarkıları aramak, oynatmak ve yönetmek için tasarlandım.\n\n"
-        "Hemen beni grubunuza ekleyerek müziğin tadını çıkarın!"
+    caption_text = (
+        "👋 **Selam! Ben Pi-Müzik Botu.**\n\n"
+        "🎵 Gruplarında sesli sohbet üzerinden yüksek kalitede müzik çalabilirim.\n\n"
+        "🚀 **Hemen başlamak için:**\n"
+        "1️⃣ Beni bir gruba ekle.\n"
+        "2️⃣ Grupta yönetici yap.\n"
+        "3️⃣ `/play şarkı adı` komutunu kullan."
     )
     
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("➕ Beni Gruba Ekle", url=f"https://t.me/{bot_info.username}?startgroup=true")],
+    buttons = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("👨‍💻 Geliştirici", url="https://t.me/GelistiriciKullaniciAdin"),
-            InlineKeyboardButton("❓ Yardım", callback_data="help_menu")
+            InlineKeyboardButton("➕ Beni Gruba Ekle", url=f"https://t.me/{client.me.username}?startgroup=true"),
         ],
-        [InlineKeyboardButton("📢 Resmi Kanal", url="https://t.me/KanalKullaniciAdin")]
+        [
+            InlineKeyboardButton("🛠️ Yardım & Komutlar", callback_data="help_menu"),
+            InlineKeyboardButton("📣 Destek", url="https://t.me/SizinDestekKanaliniz")
+        ]
     ])
-    
-    await message.reply_text(
-        text=welcome_text,
-        reply_markup=keyboard,
-        disable_web_page_preview=True
-    )
+
+    if os.path.exists(logo_path):
+        await message.reply_photo(
+            photo=logo_path,
+            caption=caption_text,
+            reply_markup=buttons
+        )
+    else:
+        await message.reply_text(
+            text=caption_text,
+            reply_markup=buttons
+        )
