@@ -7,12 +7,21 @@ from pytgcalls.types import AudioPiped
 music_queue = {}
 call = None  # Bu, main.py içindeki PyTgCalls objesi ile bağlanmalı
 
-# YouTube Bot Engelini Aşan Ayarlar
+# YouTube Bot Engelini ve SABR Hatasını Aşan Gelişmiş Ayarlar
 YDL_OPTS = {
     "format": "bestaudio/best",
-    "cookiefile": "cookies.txt",  # Yüklediğin çerez dosyasını burada kullanıyoruz
+    "cookiefile": "cookies.txt",  # Yüklediğin çerez dosyasını kullanır
     "quiet": True,
     "no_warnings": True,
+    "nocheckcertificate": True,
+    "source_address": "0.0.0.0",
+    # YouTube'un yeni kısıtlamalarını (SABR) aşmak için istemci taklidi:
+    "extractor_args": {
+        "youtube": {
+            "player_client": ["android", "ios"],
+            "skip": ["webpage", "hls"]
+        }
+    }
 }
 
 def get_player_ui():
@@ -28,11 +37,20 @@ def get_player_ui():
     ])
 
 def format_playing_message(song_info, requested_by):
+    # Süre formatı (Saniye cinsinden gelirse dakikaya çevirir)
+    duration = song_info.get('duration')
+    if isinstance(duration, int):
+        mins, secs = divmod(duration, 60)
+        duration = f"{mins:02d}:{secs:02d}"
+    else:
+        duration = "Bilinmiyor"
+
     return (
         f"🎵 **Şu An Oynatılıyor**\n\n"
         f"📌 **İsim:** [{song_info['title']}]({song_info['webpage_url']})\n"
-        f"⏱ **Süre:** `{song_info.get('duration', 'Bilinmiyor')}`\n"
-        f"👤 **Talep Eden:** {requested_by}"
+        f"⏱ **Süre:** `{duration}`\n"
+        f"👤 **Talep Eden:** {requested_by}\n\n"
+        f"🎧 **Pi-Müzik Keyifli Dinlemeler Diler!**"
     )
 
 async def add_to_queue_or_play(chat_id, song_info, requested_by):
@@ -43,10 +61,4 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
         
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
     
-    if len(music_queue[chat_id]) == 1:
-        await call.join_group_call(
-            chat_id,
-            AudioPiped(song_info['url'])
-        )
-        return True
-    return False
+    if len(music_queue[chat_id])
