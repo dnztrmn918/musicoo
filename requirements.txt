@@ -1,5 +1,4 @@
-pyrofork
-tgcrypto
-py-tgcalls
+pyrogram
+pytgcalls
 yt-dlp
-python-dotenv
+tgcrypto
