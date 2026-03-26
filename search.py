@@ -21,6 +21,6 @@ def search_youtube(query):
             'title': info.get('title'),
             'duration': info.get('duration_string', 'Bilinmiyor'),
             'thumbnail': info.get('thumbnail'),
-            'url': info.get('url'), # Doğrudan ses akış linki
+            'url': info.get('url'),
             'webpage_url': info.get('webpage_url')
         }
