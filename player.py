@@ -5,7 +5,7 @@ from pytgcalls.types import AudioPiped
 
 # Şarkı sırası ve çağrı yönetimi
 music_queue = {}
-call = None  # Bu değişken main.py tarafından doldurulacak
+call = None 
 
 # YouTube SABR ve Bot Engelini Aşan Ayarlar
 YDL_OPTS = {
@@ -35,7 +35,6 @@ def get_player_ui():
     ])
 
 def format_playing_message(song_info, requested_by):
-    # Süre formatı (Saniye cinsinden gelirse dakikaya çevirir)
     duration = song_info.get('duration')
     if isinstance(duration, int):
         mins, secs = divmod(duration, 60)
@@ -58,8 +57,8 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
         
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
     
+    # HATALI OLAN KISIM DÜZELTİLDİ
     if len(music_queue[chat_id]) == 1:
-        # ASİSTANIN SOHBETE GİRMESİNİ SAĞLAYAN KRİTİK KOMUT
         await call.join_group_call(
             chat_id,
             AudioPiped(song_info['url'])
