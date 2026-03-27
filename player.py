@@ -1,11 +1,11 @@
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pytgcalls.types import AudioPiped
 import asyncio
 
 music_queue = {}
-call = None  
+call = None  # main.py tarafından doldurulacak
 
 def get_player_ui():
+    from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("⏸ Durdur", callback_data="pause"), InlineKeyboardButton("▶️ Oynat", callback_data="resume")],
         [InlineKeyboardButton("⏭ Sıradaki", callback_data="skip"), InlineKeyboardButton("⏹ Bitir", callback_data="end")]
@@ -34,7 +34,7 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
             await call.join_group_call(chat_id, AudioPiped(song_info['url']))
             return "PLAYING"
         except Exception:
-            music_queue.pop(chat_id, None) # Hata anında belleği temizle
+            music_queue.pop(chat_id, None)
             return "ERROR"
     return "QUEUED"
 
@@ -49,7 +49,7 @@ async def stream_end_handler(chat_id):
                 await call.change_stream(chat_id, AudioPiped(next_song['info']['url']))
                 return next_song
             except Exception:
-                return await stream_end_handler(chat_id) # Bozuk şarkıyı atla
+                return await stream_end_handler(chat_id)
         else:
             music_queue.pop(chat_id, None)
             try: await call.leave_group_call(chat_id)
