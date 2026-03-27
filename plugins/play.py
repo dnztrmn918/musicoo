@@ -2,7 +2,7 @@ from pyrogram import Client, filters
 from search import search_youtube
 import player
 import config
-from assistant import assistant_join
+from plugins.assistant import assistant_join
 
 @Client.on_message(filters.command(["play", "oynat"]) & filters.group)
 async def play_command(client, message):
@@ -11,7 +11,7 @@ async def play_command(client, message):
     
     m = await message.reply("🕵️ **Asistan kontrol ediliyor...**")
     if not await assistant_join(client, chat_id):
-        return await m.edit("❌ **Asistan katılamadı. Yetkilerimi kontrol edin.**")
+        return await m.edit("❌ **Asistan katılamadı. Yönetici yetkilerimi kontrol edin.**")
     
     await m.edit("🔍 **Aranıyor...**")
     try:
@@ -49,7 +49,7 @@ async def end_cmd(client, message):
     player.music_queue.pop(message.chat.id, None)
     try:
         await player.call.leave_group_call(message.chat.id)
-        await message.reply("⏹ **Yayın bitti.**")
+        await message.reply("⏹ **Yayın sonlandırıldı.**")
     except: pass
 
 @Client.on_message(filters.command(["que", "kuyruk", "list"]) & filters.group)
