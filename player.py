@@ -1,9 +1,8 @@
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pytgcalls.types import AudioPiped
 
-# Şarkı sırası ve çağrı yönetimi
 music_queue = {}
-call = None  # main.py tarafından doldurulacak
+call = None  
 
 def get_player_ui():
     return InlineKeyboardMarkup([
@@ -18,13 +17,10 @@ def get_player_ui():
     ])
 
 def format_playing_message(song_info, requested_by):
-    # Süre formatı (Saniye gelirse dakikaya çevirir)
-    duration = song_info.get('duration')
+    duration = song_info.get('duration', 'Bilinmiyor')
     if isinstance(duration, int):
         mins, secs = divmod(duration, 60)
         duration = f"{mins:02d}:{secs:02d}"
-    else:
-        duration = "Bilinmiyor"
 
     return (
         f"🎵 **Şu An Oynatılıyor**\n\n"
@@ -38,13 +34,27 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     if chat_id not in music_queue:
         music_queue[chat_id] = []
     
+    # 5 Şarkı Limiti (1 çalan + 4 bekleyen = 5)
+    if len(music_queue[chat_id]) >= 5:
+        return "FULL"
+    
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
     
     if len(music_queue[chat_id]) == 1:
-        # search.py'den gelen temiz url ile oynatmayı başlatır
-        await call.join_group_call(
-            chat_id,
-            AudioPiped(song_info['url'])
-        )
-        return True
-    return False
+        await call.join_group_call(chat_id, AudioPiped(song_info['url']))
+        return "PLAYING"
+    return "QUEUED"
+
+async def stream_end_handler(chat_id):
+    global music_queue
+    if chat_id in music_queue:
+        if len(music_queue[chat_id]) > 1:
+            music_queue[chat_id].pop(0) 
+            next_song = music_queue[chat_id][0]
+            await call.change_stream(chat_id, AudioPiped(next_song['info']['url']))
+            return next_song
+        else:
+            music_queue.pop(chat_id, None)
+            await call.leave_group_call(chat_id)
+            return "EMPTY"
+    return None
