@@ -1,50 +1,54 @@
 import time
-import asyncio
 from pyrogram import Client, filters
 import config
 from database import get_served_chats, get_served_users
 
+def get_readable_time(seconds: int) -> str:
+    count = 0
+    ping_time = ""
+    time_list = []
+    time_suffix_list = ["s", "m", "h", "d"]
+    while count < 4:
+        count += 1
+        remainder, result = divmod(seconds, 60) if count < 3 else divmod(seconds, 24)
+        if seconds == 0 and remainder == 0: break
+        time_list.append(int(result))
+        seconds = int(remainder)
+    for i in range(len(time_list)):
+        time_list[i] = str(time_list[i]) + time_suffix_list[i]
+    if len(time_list) == 4: ping_time += time_list.pop() + ", "
+    time_list.reverse()
+    ping_time += ":".join(time_list)
+    return ping_time
+
 @Client.on_message(filters.command("bilgi") & filters.user(config.SUDO_USERS))
 async def info_to_channel(client, message):
-    start_t = time.time()
-    m = await message.reply_text("📊 **Veriler toplanıyor...**")
+    m = await message.reply_text("⏳ **Veriler senkronize ediliyor...**")
+    from main import userbot, START_TIME
+    
+    all_chats = await get_served_chats()
+    all_users = await get_served_users()
+    uptime = get_readable_time(int(time.time() - START_TIME))
+    ass_status = "🟢 AKTİF" if userbot.is_connected else "🔴 PASİF"
+    
+    stats_text = (
+        "┌────────────────────┐\n"
+        "        SİSTEM İSTATİSTİKLERİ \n"
+        "└────────────────────┘\n\n"
+        f"🏠 Grup Sayısı ➪ `{len(all_chats)}` \n"
+        f"👤 Kullanıcılar ➪ `{len(all_users)}` \n"
+        f"🤖 Bot Durumu ➪ `🟢 ÇALIŞIYOR` \n"
+        f"🎙️ Asistan ➪ `{ass_status}` \n"
+        f"⏳ Uptime ➪ `{uptime}` \n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"📡 Bağlantı ➪ `Sorunsuz` \n"
+        f"📅 Tarih ➪ `{time.strftime('%d/%m/%Y %H:%M:%S')}` \n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"Powered by @{client.me.username}"
+    )
     
     try:
-        all_chats = await get_served_chats()
-        all_users = await get_served_users()
-        ping = f"{round((time.time() - start_t) * 1000)} ms"
-        
-        stats_text = (
-            "📢 **MÜZİK BOTU GÜNCEL RAPORU**\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            f"🏠 **Toplam Grup:** `{len(all_chats)}` grup\n"
-            f"👥 **Toplam Kullanıcı:** `{len(all_users)}` kişi\n"
-            f"⚡️ **Ping:** `{ping}`\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            f"📅 **Tarih:** {time.strftime('%d/%m/%Y %H:%M:%S')}"
-        )
-        
         await client.send_message(config.STATS_CHANNEL_ID, stats_text)
-        await m.edit("✅ **İstatistikler kanala gönderildi!**")
+        await m.edit("✅ **İstatistik raporu kanala iletildi.**")
     except Exception as e:
-        await m.edit(f"❌ Hata oluştu: {e}")
-
-@Client.on_message(filters.command("duyuru") & filters.user(config.SUDO_USERS))
-async def broadcast(client, message):
-    # Hatalı olan 'if not message' kısmı burada düzeltildi:
-    if not message.reply_to_message:
-        return await message.reply("📢 Duyuru yapmak için bir mesaja yanıt verin!")
-    
-    chats = await get_served_chats()
-    sent = 0
-    m = await message.reply_text(f"🚀 Duyuru `{len(chats)}` gruba gönderiliyor...")
-    
-    for chat_id in chats:
-        try:
-            await message.reply_to_message.copy(chat_id)
-            sent += 1
-            await asyncio.sleep(0.3)
-        except:
-            pass
-            
-    await m.edit(f"✅ **Duyuru tamamlandı!**\n📦 **Başarılı:** `{sent}`\n❌ **Hatalı:** `{len(chats) - sent}`")
+        await m.edit(f"❌ **Hata:** `{e}`\n(Botu kanalda yönetici yapın!)")
