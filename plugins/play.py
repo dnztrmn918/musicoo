@@ -19,7 +19,7 @@ async def play_command(client, message):
     await add_served_chat(message.chat.id)
     chat_id = message.chat.id
     
-    # Asistan Davet Sistemi 
+    # Asistan Kontrol ve Davet
     try:
         await client.get_chat_member(chat_id, "PiMusicAssistan") 
     except:
@@ -34,7 +34,7 @@ async def play_command(client, message):
 
     if len(message.command) < 2: return await message.reply("🔍 Şarkı adı girin.")
     query = message.text.split(None, 1)[1]
-    m = await message.reply("🔍 **Aranıyor...**")
+    m = await message.reply("🔍 **Aranıyor...** ⏳")
     
     try:
         song_info = search_youtube(query)
@@ -48,7 +48,7 @@ async def play_command(client, message):
         thumb = song_info.get('thumbnail') or "https://telegra.ph/file/69204068595f57731936c.jpg"
 
         if res == "ERROR":
-            await message.reply("❌ **Asistan sesli sohbete giremedi.**")
+            await message.reply("❌ **Asistan sesli sohbete bağlanamadı.**")
         elif res == "FULL":
             await message.reply("⚠️ **Kuyruk dolu (Maks 5).**")
         elif res == "PLAYING":
@@ -70,15 +70,22 @@ async def callbacks(client, query):
         return await query.answer("Yetkiniz yok!", show_alert=True)
     
     if query.data == "end":
-        player.music_queue.pop(chat_id, None) # Kuyruğu temizle 
+        # Kuyruğu ve belleği temizle
+        player.music_queue.pop(chat_id, None) 
         try: await player.call.leave_group_call(chat_id)
         except: pass
         await query.message.delete()
-        await client.send_message(chat_id, "⏹ **Yayın sonlandırıldı ve kuyruk temizlendi.**")
+        await client.send_message(chat_id, "⏹ **Yayın sonlandırıldı ve kuyruk temizlendi.** 🧹")
     elif query.data == "skip":
         res = await player.stream_end_handler(chat_id)
         await query.message.delete()
         if res and res != "EMPTY":
-            msg = await client.send_photo(chat_id, photo=res['info'].get('thumbnail'), caption=player.format_playing_message(res['info'], res['by']), reply_markup=player.get_player_ui())
+            thumb = res['info'].get('thumbnail') or "https://telegra.ph/file/69204068595f57731936c.jpg"
+            msg = await client.send_photo(chat_id, photo=thumb, caption=player.format_playing_message(res['info'], res['by']), reply_markup=player.get_player_ui())
             playing_messages[chat_id] = msg
-    # ... (pause/resume kısımları aynı)
+    elif query.data == "pause":
+        await player.call.pause_stream(chat_id)
+        await query.answer("⏸ Durduruldu.")
+    elif query.data == "resume":
+        await player.call.resume_stream(chat_id)
+        await query.answer("▶️ Devam ediyor.")
