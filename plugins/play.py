@@ -2,6 +2,7 @@ from pyrogram import Client, filters
 from search import search_youtube
 import player
 from pytgcalls.exceptions import NoActiveGroupCall
+from pytgcalls.types import AudioPiped # Sıradaki şarkıya geçiş için eklendi
 
 PREFIXES = ["/", "."]
 
@@ -17,7 +18,7 @@ async def play_command(client, message):
         song_info = search_youtube(query)
         requested_by = message.from_user.mention
         
-        # SESLİ SOHBET KONTROLÜ BURADA BAŞLIYOR
+        # SESLİ SOHBET KONTROLÜ
         try:
             is_playing = await player.add_to_queue_or_play(message.chat.id, song_info, requested_by)
             
@@ -39,10 +40,9 @@ async def play_command(client, message):
                 await status_msg.edit_text(f"✅ **{song_info['title']}** kuyruğa eklendi!")
                 
         except NoActiveGroupCall:
-            # EĞER SESLİ SOHBET AÇIK DEĞİLSE ÇÖKMEK YERİNE UYAR!
             await status_msg.edit_text("❌ **Müzik çalamıyorum!**\nLütfen önce grupta bir **Sesli Sohbet (Voice Chat) başlatın** ve komutu tekrar deneyin.")
             if message.chat.id in player.music_queue:
-                player.music_queue.pop(message.chat.id, None) # Hatalı şarkıyı kuyruktan sil
+                player.music_queue.pop(message.chat.id, None)
                 
     except Exception as e:
         await status_msg.edit_text(f"❌ Bir hata oluştu: {str(e)}")
@@ -61,10 +61,12 @@ async def stop_command(client, message):
     except Exception as e:
         await message.reply_text(f"Bir sorun oluştu: {str(e)}")
 
-# ASİSTAN BAĞLANTI TEST KOMUTU
 @Client.on_message(filters.command(["asistan", "kontrol"], prefixes=PREFIXES) & filters.group)
 async def check_assistant(client, message):
     try:
-        await message.reply_text("✅ Asistan sistemi kodlara başarıyla entegre edildi. Lütfen Koyeb loglarını kontrol edin (Asistan Hesap Başarıyla Bağlandı yazısını görmelisiniz).")
+        await message.reply_text("✅ Asistan sistemi kodlara başarıyla entegre edildi. Lütfen Koyeb loglarını kontrol edin.")
     except Exception as e:
         await message.reply_text(f"❌ Bir sorun var: {e}")
+
+# BUTONLARI AKTİFLEŞTİREN YENİ KISIM
+@Client
