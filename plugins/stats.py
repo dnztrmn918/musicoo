@@ -10,9 +10,9 @@ async def stats_cmd(client, message):
     m = await message.reply_text("📡 **Durum kontrol ediliyor...**")
     start_t = time.time()
 
-    # SoundCloud bağlantı testi
+    # URL HATASI DÜZELTİLDİ
     try:
-        sc_req = requests.get("[soundcloud.com](https://soundcloud.com)", timeout=5)
+        sc_req = requests.get("https://soundcloud.com", timeout=5)
         sc_status = "🟢 Çevrimiçi" if sc_req.status_code == 200 else "🟡 Yavaş"
     except Exception:
         sc_status = "🔴 Erişilemiyor"
