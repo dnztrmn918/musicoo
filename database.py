@@ -1,27 +1,40 @@
-from motor.motor_asyncio import AsyncIOMotorClient
+import asyncpg
 import config
 
-if config.MONGO_DB_URI:
-    client = AsyncIOMotorClient(config.MONGO_DB_URI)
-    db = client.pimusic
-    usersdb = db.users
-    chatsdb = db.chats
-else:
-    usersdb = None
-    chatsdb = None
+db_pool = None
+
+async def init_db():
+    global db_pool
+    if not config.DATABASE_URL:
+        return
+    db_pool = await asyncpg.create_pool(config.DATABASE_URL)
+    async with db_pool.acquire() as conn:
+        await conn.execute('''
+            CREATE TABLE IF NOT EXISTS served_users (user_id BIGINT PRIMARY KEY);
+            CREATE TABLE IF NOT EXISTS served_chats (chat_id BIGINT PRIMARY KEY);
+        ''')
+    print("✅ PostgreSQL Veritabanı Hazır!")
 
 async def add_served_user(user_id: int):
-    if usersdb is not None:
-        if not await usersdb.find_one({"user_id": user_id}):
-            await usersdb.insert_one({"user_id": user_id})
+    if db_pool:
+        async with db_pool.acquire() as conn:
+            await conn.execute('INSERT INTO served_users (user_id) VALUES ($1) ON CONFLICT DO NOTHING', user_id)
 
 async def get_served_users():
-    return await usersdb.to_list(length=None) if usersdb is not None else []
+    if db_pool:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch('SELECT user_id FROM served_users')
+            return [row['user_id'] for row in rows]
+    return []
 
 async def add_served_chat(chat_id: int):
-    if chatsdb is not None:
-        if not await chatsdb.find_one({"chat_id": chat_id}):
-            await chatsdb.insert_one({"chat_id": chat_id})
+    if db_pool:
+        async with db_pool.acquire() as conn:
+            await conn.execute('INSERT INTO served_chats (chat_id) VALUES ($1) ON CONFLICT DO NOTHING', chat_id)
 
 async def get_served_chats():
-    return await chatsdb.to_list(length=None) if chatsdb is not None else []
+    if db_pool:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch('SELECT chat_id FROM served_chats')
+            return [row['chat_id'] for row in rows]
+    return []
