@@ -21,9 +21,13 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     global music_queue
     if chat_id not in music_queue:
         music_queue[chat_id] = []
+    
+    # 5 Şarkı Sınırı Kontrolü 
     if len(music_queue[chat_id]) >= 5:
         return "FULL"
+        
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
+    
     if len(music_queue[chat_id]) == 1:
         await call.join_group_call(chat_id, AudioPiped(song_info['url']))
         return "PLAYING"
