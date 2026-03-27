@@ -1,14 +1,14 @@
 import player
+import asyncio
 from pytgcalls.types.stream import StreamAudioEnded
 from pyrogram.errors import UserAlreadyParticipant, FloodWait
-import asyncio
 
 async def on_stream_end_handler(client, update):
     if isinstance(update, StreamAudioEnded):
         chat_id = update.chat_id
         result = await player.stream_end_handler(chat_id)
         
-        from main import bot # Circular import çözümü
+        from main import bot
         if result == "EMPTY":
             await bot.send_message(chat_id, "ℹ️ **Kuyruk bitti, asistan ayrılıyor.** 👋")
         elif result:
@@ -21,7 +21,6 @@ async def on_stream_end_handler(client, update):
             )
 
 async def assistant_join(client, chat_id):
-    """Asistan grupta yoksa otomatik katılır."""
     from main import userbot
     try:
         await client.get_chat_member(chat_id, (await userbot.get_me()).id)
