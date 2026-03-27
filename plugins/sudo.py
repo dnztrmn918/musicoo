@@ -1,27 +1,51 @@
+import time
 from pyrogram import Client, filters
-import config, player, asyncio
+import config
 from database import get_served_chats, get_served_users
 
-@Client.on_message(filters.command("reloads"))
-async def reloads_cmd(c, m):
-    if m.from_user.id not in config.SUDO_USERS: return
-    player.music_queue.clear()
-    await m.reply("⚙️ **SİSTEM SIFIRLANDI!** 🧹")
+@Client.on_message(filters.command("bilgi") & filters.user(config.SUDO_USERS))
+async def info_to_channel(client, message):
+    """
+    Sadece Sudo kullanıcıları tarafından kullanılabilir.
+    Botun hizmet verdiği grup ve kullanıcı sayılarını raporlar.
+    """
+    start_t = time.time()
+    m = await message.reply_text("📊 **Güncel veriler toplanıyor...**")
+    
+    # Veritabanından (PostgreSQL) verileri çek
+    try:
+        all_chats = await get_served_chats()
+        all_users = await get_served_users()
+    except Exception as e:
+        return await m.edit(f"❌ **Veritabanı hatası:** {e}")
+    
+    # Gecikme (Ping) hesapla
+    ping = f"{round((time.time() - start_t) * 1000)} ms"
+    
+    # Rapor Taslağı
+    stats_text = (
+        "📢 **Pİ-MÜZİK SİSTEM RAPORU**\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"🏠 **Toplam Grup:** `{len(all_chats)}` grup\n"
+        f"👥 **Toplam Kullanıcı:** `{len(all_users)}` kişi\n"
+        f"⚡️ **Sistem Gecikmesi:** `{ping}`\n"
+        f"🛰 **Bağlantı Durumu:** `🟢 Aktif`\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 **Sorgulayan:** {message.from_user.mention}\n"
+        f"📅 **Tarih:** {time.strftime('%d/%m/%Y %H:%M:%S')}"
+    )
+    
+    # 1. Mesajın altına Bilgi Kanalına gönderildiğine dair onay ver
+    try:
+        # İstatistikleri Kanala Gönder
+        await client.send_message(config.STATS_CHANNEL_ID, stats_text)
+        await m.edit("✅ **İstatistikler başarıyla Bilgi Kanalı'na iletildi!**")
+    except Exception as e:
+        await m.edit(f"⚠️ **Hata:** Veriler toplandı ancak kanala gönderilemedi.\n`Sebep: {e}`")
 
-@Client.on_message(filters.command(["broadcast", "reklam"]))
-async def broadcast_cmd(c, m):
-    if m.from_user.id not in config.SUDO_USERS: return
-    if not m.reply_to_message and len(m.command) < 2: return await m.reply("⚠️ Metin girin!")
-    
-    targets = list(set(await get_served_chats() + await get_served_users()))
-    status = await m.reply(f"🚀 **Yayın Başlatıldı!** Target: `{len(targets)}`")
-    
-    sent = 0
-    for t in targets:
-        try:
-            if m.reply_to_message: await m.reply_to_message.copy(t)
-            else: await c.send_message(t, m.text.split(None, 1)[1])
-            sent += 1
-            await asyncio.sleep(0.1)
-        except: pass
-    await status.edit(f"✅ **Yayın Bitti!** Ulaşılan: `{sent}`")
+@Client.on_message(filters.command("duyuru") & filters.user(config.SUDO_USERS))
+async def broadcast(client, message):
+    """
+    Sudo kullanıcıları için tüm gruplara mesaj gönderme taslağı.
+    """
+    if not message
