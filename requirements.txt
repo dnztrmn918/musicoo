@@ -3,4 +3,4 @@ py-tgcalls
 ntgcalls==1.0.1
 yt-dlp
 tgcrypto
-motor
+asyncpg
