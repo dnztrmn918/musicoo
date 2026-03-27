@@ -1,10 +1,13 @@
 import asyncio
+import time
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
 import config, player 
 from database import init_db
 
-# Bot Nesnesi
+# START_TIME EN ÜSTTE OLMALI
+START_TIME = time.time() 
+
 bot = Client(
     "pi_music_bot", 
     api_id=config.API_ID, 
@@ -13,7 +16,6 @@ bot = Client(
     plugins=dict(root="plugins")
 )
 
-# Asistan Nesnesi
 userbot = Client(
     "pi_assistant", 
     api_id=config.API_ID, 
@@ -24,28 +26,10 @@ userbot = Client(
 call = PyTgCalls(userbot)
 player.call = call 
 
-# Şarkı bittiğinde tetiklenen mekanizma
 @call.on_stream_end()
 async def stream_end_handler(client, update):
-    from pytgcalls.types.stream import StreamAudioEnded
-    if isinstance(update, StreamAudioEnded):
-        chat_id = update.chat_id
-        # Kuyruk işlemlerini güvenli bir try-except bloğuna alıyoruz
-        try:
-            result = await player.stream_end_handler(chat_id)
-            
-            # bot nesnesinin başlatıldığından ve bağlı olduğundan emin ol
-            if bot and bot.is_connected:
-                if result == "EMPTY":
-                    await bot.send_message(chat_id, "ℹ️ **Kuyruk bitti, asistan ayrılıyor.** 👋")
-                elif result:
-                    await bot.send_message(
-                        chat_id, 
-                        player.format_playing_message(result["info"], result["by"]), 
-                        reply_markup=player.get_player_ui()
-                    )
-        except Exception as e:
-            print(f"Stream End Hatası: {e}")
+    from plugins.start import on_stream_end_handler
+    await on_stream_end_handler(client, update)
 
 async def main():
     print("🚀 Sistem başlatılıyor...")
@@ -53,6 +37,12 @@ async def main():
     await bot.start()
     await userbot.start()
     await call.start()
+    
+    # Başlangıç Logu
+    try:
+        await bot.send_message(config.LOG_GROUP_ID, "✅ **Sistem ve Asistan Başarıyla Çevrimiçi!**")
+    except: pass
+    
     print("✅ Pi-Müzik Botu ve Asistan Sorunsuz Başlatıldı!")
     await idle()
 
