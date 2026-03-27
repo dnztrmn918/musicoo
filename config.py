@@ -5,6 +5,6 @@ API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 SESSION = os.getenv("SESSION", "") 
 
-# YENİ EKLENEN VERİTABANI VE YETKİ DEĞİŞKENLERİ
-MONGO_DB_URI = os.getenv("MONGO_DB_URI", "")
-OWNER_ID = int(os.getenv("OWNER_ID", "0")) # Kendi Telegram ID'ni buraya yazacaksın
+# Veritabanı ve Sudo Ayarları
+DATABASE_URL = os.getenv("DATABASE_URL", "") 
+SUDO_USERS = [int(x) for x in os.getenv("SUDO_USERS", "").split(",") if x.strip()]
