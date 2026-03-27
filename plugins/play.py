@@ -1,118 +1,122 @@
 from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from search import search_youtube
-from plugins.assistant import assistant_join
 import player
-import config
-
+from plugins.assistant import assistant_join
 
 # ────────────────────────────────────────────────
-#  ŞARKI BAŞLATMA / KUYRUK YÖNETİMİ
+# OYNATMA KOMUTU (/play)
 # ────────────────────────────────────────────────
 @Client.on_message(filters.command(["play", "oynat"]) & filters.group)
 async def play_command(client, message):
     chat_id = message.chat.id
-    if len(message.command) < 2:
-        return await message.reply("🔍 **Bir şarkı adı veya link belirtin.**")
-
-    waiting = await message.reply("📡 **Asistan ve ses kontrol ediliyor...**")
+    if len(message.command) < 2: 
+        return await message.reply("🔍 **Lütfen bir şarkı adı veya link girin.**")
+    
+    m = await message.reply("📡 **Asistan bağlanıyor...**")
+    
+    # Asistanın odaya katılım kontrolü
     join_status = await assistant_join(client, chat_id)
     if join_status == "ADMIN_REQUIRED":
-        return await waiting.edit(
-            "❌ **Beni yönetici yapın ve 'Davet Bağlantısı Oluşturma' yetkisini verin.**"
-        )
+        return await m.edit("❌ **Beni yönetici yapmalı ve 'Davet Bağlantısı Oluşturma' yetkisi vermelisiniz.**")
     elif not join_status:
-        return await waiting.edit("❌ **Asistan bağlantısı kurulamadı.**")
+        return await m.edit("❌ **Asistan şu an sese bağlanamıyor.**")
 
     try:
         query = message.text.split(None, 1)[1]
         song_info = search_youtube(query)
-        status = await player.add_to_queue_or_play(chat_id, song_info, message.from_user.mention)
-        await waiting.delete()
-
-        if status == "FULL":
-            return await message.reply(
-                "⚠️ **Kuyruk dolu!** Maksimum 5 şarkı eklenebilir.\n"
-                "🎧 Şarkılardan bazıları bitince tekrar deneyin.", 
-                quote=True
-            )
-        elif status == "ERROR":
-            return await message.reply("❌ **Yayın başlatılamadı.**")
-
-        thumb = song_info.get("thumbnail") or "[telegra.ph](https://telegra.ph/file/69204068595f57731936c.jpg)"
+        
+        # player.py üzerinden kuyruğa ekle veya çal
+        res = await player.add_to_queue_or_play(chat_id, song_info, message.from_user.mention)
+        
+        if res == "ERROR":
+            return await m.edit("❌ **Asistan sese katılamadı!**\n\nGrupta sesli sohbetin **başlatıldığından** emin olun.")
+        elif res == "FULL":
+            return await m.edit("⚠️ **Kuyruk dolu!** (Maksimum 5 şarkı eklenebilir. Mevcutları silmek için `/sil` kullanın.)")
+        
+        await m.delete()
+        thumb = song_info.get('thumbnail') or "https://telegra.ph/file/69204068595f57731936c.jpg"
         await message.reply_photo(
-            photo=thumb,
-            caption=player.format_playing_message(song_info, message.from_user.mention),
-            reply_markup=player.get_player_ui(),
+            photo=thumb, 
+            caption=player.format_playing_message(song_info, message.from_user.mention), 
+            reply_markup=player.get_player_ui()
         )
     except Exception as e:
-        await waiting.edit(f"❌ **Hata:** `{e}`")
-
+        await m.edit(f"❌ **Arama Hatası:** `{e}`")
 
 # ────────────────────────────────────────────────
-#  KOMUTLAR
+# ATLA VE BİTİR KOMUTLARI (/skip, /end)
 # ────────────────────────────────────────────────
-@Client.on_message(filters.command(["skip", "atla"]) & filters.group)
-async def skip_cmd(client, message):
-    res = await player.stream_end_handler(message.chat.id)
+@Client.on_message(filters.command(["skip", "atla", "end", "bitir"]) & filters.group)
+async def skip_end_cmd(client, message):
+    chat_id = message.chat.id
+    res = await player.stream_end_handler(chat_id)
+    
     if res == "EMPTY":
-        await message.reply("⏹ **Kuyruk bitti.**")
-    elif isinstance(res, dict):
-        await message.reply(f"⏭ **Sıradaki:** `{res['info']['title']}`")
+        await message.reply("⏹ **Kuyruk bitti, asistan sesli sohbetten ayrıldı.** 👋")
+    elif res:
+        await message.reply(f"⏭ **Sıradaki parçaya geçildi:** `{res['info']['title']}`")
+    else:
+        await message.reply("📭 **Şu anda çalan veya atlanacak bir parça yok.**")
 
-
+# ────────────────────────────────────────────────
+# DURDUR VE DEVAM ET KOMUTLARI (/stop, /resume)
+# ────────────────────────────────────────────────
 @Client.on_message(filters.command(["stop", "dur", "pause"]) & filters.group)
-async def stop_cmd(client, message):
+async def pause_cmd(client, message):
+    chat_id = message.chat.id
     try:
-        await player.call.pause_stream(message.chat.id)
-        await message.reply("⏸ **Duraklatıldı.**")
-    except:
+        await player.call.pause_stream(chat_id)
+        await message.reply("⏸ **Yayın duraklatıldı.** (Devam etmek için `/devam`)")
+    except Exception:
         pass
-
 
 @Client.on_message(filters.command(["resume", "devam"]) & filters.group)
 async def resume_cmd(client, message):
+    chat_id = message.chat.id
     try:
-        await player.call.resume_stream(message.chat.id)
-        await message.reply("▶️ **Devam ediyor.**")
-    except:
+        await player.call.resume_stream(chat_id)
+        await message.reply("▶️ **Yayın devam ediyor.**")
+    except Exception:
         pass
 
-
-@Client.on_message(filters.command(["end", "bitir"]) & filters.group)
-async def end_cmd(client, message):
-    player.clear_queue(message.chat.id)
-    try:
-        await player.call.leave_group_call(message.chat.id)
-        await message.reply("⏹ **Yayın bitti.**")
-    except:
-        pass
-
-
 # ────────────────────────────────────────────────
-#  KUYRUK GÖSTER / TEMİZLE
+# KUYRUK LİSTELEME KOMUTU (/que)
 # ────────────────────────────────────────────────
-@Client.on_message(filters.command(["que", "kuyruk"]) & filters.group)
-async def queue_cmd(client, message):
-    text = player.format_queue(message.chat.id)
+@Client.on_message(filters.command(["que", "kuyruk", "list"]) & filters.group)
+async def que_cmd(client, message):
+    chat_id = message.chat.id
+    text = player.format_queue(chat_id)
     await message.reply(text)
 
-
-@Client.on_message(filters.command(["sil"]) & filters.group)
-async def clear_or_delete_queue(client, message):
+# ────────────────────────────────────────────────
+# SİL KOMUTU (/sil)
+# ────────────────────────────────────────────────
+@Client.on_message(filters.command(["sil", "temizle"]) & filters.group)
+async def sil_cmd(client, message):
     chat_id = message.chat.id
+    
+    # Kuyruk yoksa veya sadece çalan şarkı varsa silinecek bir şey yoktur
+    if chat_id not in player.music_queue or len(player.music_queue[chat_id]) <= 1:
+        return await message.reply("📭 **Silinecek bir kuyruk yok.**")
+    
+    # Sadece /sil yazıldıysa (Parametre yoksa tüm kuyruğu temizle)
     if len(message.command) == 1:
-        if chat_id not in player.music_queue or not player.music_queue[chat_id]:
-            return await message.reply("📭 **Kuyruk boş.**")
-        player.clear_queue(chat_id)
-        return await message.reply("🧹 **Tüm kuyruk temizlendi.**")
-
+        # Çalan şarkıyı (0. index) tut, geri kalanını sil
+        player.music_queue[chat_id] = [player.music_queue[chat_id][0]]
+        return await message.reply("🗑 **Kuyruk tamamen temizlendi!** (Şu an çalan parça devam ediyor)")
+    
+    # /sil 1 veya /sil 2 gibi sayı girildiyse
     try:
-        index = int(message.command[1]) - 1
+        index = int(message.command[1])
+        max_index = len(player.music_queue[chat_id]) - 1
+        
+        if index < 1 or index > max_index:
+            return await message.reply(f"⚠️ **Geçersiz sıra numarası!** (Lütfen `1` ile `{max_index}` arasında bir sayı girin)")
+        
+        # Seçilen şarkıyı kuyruktan çıkar
         removed = player.remove_from_queue(chat_id, index)
         if removed:
-            await message.reply(f"🗑️ **Silindi:** `{removed['info']['title']}`")
-        else:
-            await message.reply("⚠️ Geçersiz sıra numarası.")
+            await message.reply(f"🗑 **Sıradan çıkarıldı:** `{removed['info']['title']}`")
+            
     except ValueError:
-        await message.reply("❌ Geçerli bir sayı belirtin.")
+        await message.reply("⚠️ **Lütfen geçerli bir sayı girin.** (Örnek kullanım: `/sil 1` veya `/sil 2`)")
