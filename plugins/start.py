@@ -2,102 +2,79 @@ import time
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import add_served_user, get_served_users, get_served_chats
+import player, config
 
-# --- AYARLAR ---
-DEVELOPER_LINK = "https://t.me/dnztrmnn"
-CHANNEL_LINK = "https://t.me/NowaDestek"
-
-# --- BUTON TASARIMLARI ---
-
+# --- PANEL TASARIMLARI ---
 def start_panel(bot_username):
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("➕ Beni Gruba Ekle", url=f"https://t.me/{bot_username}?startgroup=true")],
-        [
-            InlineKeyboardButton("🛠️ Komutlar", callback_data="help_main"),
-            InlineKeyboardButton("👨‍💻 Geliştirici", url=DEVELOPER_LINK)
-        ],
-        [InlineKeyboardButton("📢 Resmi Kanal", url=CHANNEL_LINK)]
+        [InlineKeyboardButton("🛠️ Komutlar", callback_data="help_main"), 
+         InlineKeyboardButton("👨‍💻 Geliştirici", url="https://t.me/dnztrmnn")],
+        [InlineKeyboardButton("📢 Resmi Kanal", url="https://t.me/NowaDestek")]
     ])
 
-def main_help_markup():
+def help_main_markup():
     return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("🎵 Müzik Menüsü", callback_data="help_music"),
-            InlineKeyboardButton("🏷️ Etiket Menüsü", callback_data="help_tag")
-        ],
+        [InlineKeyboardButton("🎵 Müzik Menüsü", callback_data="help_music"),
+         InlineKeyboardButton("🏷️ Etiket Menüsü", callback_data="help_tag")],
         [InlineKeyboardButton("🔙 Ana Menüye Dön", callback_data="start_menu")]
     ])
 
 def back_to_help_markup():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔙 Geri Dön", callback_data="help_main")]
-    ])
+    return InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Geri Dön", callback_data="help_main")]])
 
-# --- MESAJ YÖNETİCİLERİ ---
-
-@Client.on_message(filters.command(["start", "yardim", "help"]) & filters.private)
-async def start(client, message):
+# --- KOMUTLAR ---
+@Client.on_message(filters.command(["start"]) & filters.private)
+async def start_private(client, message):
     await add_served_user(message.from_user.id)
-    
     users = len(await get_served_users())
     chats = len(await get_served_chats())
     
-    caption_text = (
+    start_text = (
         f"👋 **Merhaba {message.from_user.mention}!**\n\n"
-        "🎵 Gruplarında sesli sohbet üzerinden kesintisiz ve yüksek kalitede müzik çalabilir, "
-        "gelişmiş etiketleme sistemlerini kullanabilirim.\n\n"
-        f"📊 **Sistem Verileri:**\n"
-        f"👥 Kullanıcılar: `{users}`\n"
-        f"💬 Gruplar: `{chats}`\n\n"
-        "Butonları kullanarak detaylı bilgi alabilirsin."
+        "🎵 **Nowa-Müzik Botu** ile gruplarında yüksek kalitede sesli sohbet yayınları yapabilirsin.\n\n"
+        f"📊 **İstatistikler:**\n"
+        f"👥 Kullanıcı: `{users}`\n"
+        f"💬 Grup: `{chats}`\n\n"
+        "Butonları kullanarak detaylı bilgi alabilirsin. ✨"
     )
-    await message.reply_text(text=caption_text, reply_markup=start_panel(client.me.username))
+    await message.reply_text(text=start_text, reply_markup=start_panel(client.me.username))
 
 @Client.on_message(filters.command("reload"))
-async def reload_everyone(client, message):
-    # Bu komut artık herkes tarafından kullanılabilir
+async def reload_cmd(client, message):
     await message.reply_text("✅ **Sistem ve yönetici listesi başarıyla tazelendi!**")
 
 # --- CALLBACK HANDLER (Buton Fonksiyonları) ---
-
 @Client.on_callback_query()
-async def callbacks(client, query):
+async def centralized_callbacks(client, query):
     data = query.data
-    bot_username = client.me.username
+    chat_id = query.message.chat.id
 
-    # Ana Menü (Start)
     if data == "start_menu":
         users = len(await get_served_users())
         chats = len(await get_served_chats())
-        caption_text = (
-            f"👋 **Merhaba {query.from_user.mention}!**\n\n"
-            "Müzik ve Etiketleme botu ana menüsündesin.\n\n"
-            f"📊 **İstatistikler:**\n"
-            f"👥 Kullanıcılar: `{users}`\n"
-            f"💬 Gruplar: `{chats}`"
+        await query.message.edit_text(
+            f"👋 **Ana Menüye Hoş Geldin!**\n\n📊 İstatistikler:\n👥 Kullanıcı: `{users}` | 💬 Grup: `{chats}`",
+            reply_markup=start_panel(client.me.username)
         )
-        await query.message.edit_text(text=caption_text, reply_markup=start_panel(bot_username))
 
-    # Yardım Kategorileri Seçim Ekranı
     elif data == "help_main":
         await query.message.edit_text(
             "🛠️ **Yardım ve Komutlar**\n\nLütfen öğrenmek istediğin kategoriyi seç:",
-            reply_markup=main_help_markup()
+            reply_markup=help_main_markup()
         )
 
-    # Müzik Komutları Sayfası
     elif data == "help_music":
         music_text = (
             "🎵 **Müzik Komutları**\n\n"
             "• `/play [isim]` : Şarkı başlatır.\n"
             "• `/skip` : Sıradaki şarkıya geçer.\n"
             "• `/dur` : Yayını duraklatır.\n"
-            "• `/bitir` : Yayını kapatır.\n"
+            "• `/bitir` : Yayını kapatır ve kuyruğu siler.\n"
             "• `/que` : Kuyruk listesini gösterir."
         )
         await query.message.edit_text(text=music_text, reply_markup=back_to_help_markup())
 
-    # Tag (Etiket) Komutları Sayfası
     elif data == "help_tag":
         tag_text = (
             "🏷️ **Etiketleme Sistemleri**\n\n"
@@ -110,6 +87,29 @@ async def callbacks(client, query):
         )
         await query.message.edit_text(text=tag_text, reply_markup=back_to_help_markup())
 
-    # Menü Kapatma
+    # Müzik Buton Fonksiyonları (player.py entegreli)
+    elif data == "skip":
+        res = await player.stream_end_handler(chat_id)
+        await query.message.delete()
+        if res and res != "EMPTY":
+            await client.send_photo(chat_id, photo=res['info'].get('thumbnail'), caption=player.format_playing_message(res['info'], res['by']), reply_markup=player.get_player_ui())
+    
+    elif data == "end":
+        player.music_queue.pop(chat_id, None)
+        try: await player.call.leave_group_call(chat_id)
+        except: pass
+        await query.message.delete()
+        await client.send_message(chat_id, "⏹ **Yayın sonlandırıldı.** 🧹")
+
+    elif data == "pause":
+        try: await player.call.pause_stream(chat_id)
+        except: pass
+        await query.answer("⏸ Durduruldu.")
+        
+    elif data == "resume":
+        try: await player.call.resume_stream(chat_id)
+        except: pass
+        await query.answer("▶️ Devam ediyor.")
+
     elif data == "close_stats":
         await query.message.delete()
