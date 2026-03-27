@@ -2,9 +2,9 @@ import asyncio
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
 import config
-import player # player.py dosyasını içe aktarıyoruz
+import player 
 
-# Bot ve Asistanı Başlatma
+# 1. Asıl Botu Başlatma (Mesajları okur ve menüleri açar)
 bot = Client(
     "pi_music_bot",
     api_id=config.API_ID,
@@ -13,14 +13,34 @@ bot = Client(
     plugins=dict(root="plugins")
 )
 
-call = PyTgCalls(bot)
+# 2. ASİSTAN (USERBOT) BAĞLANTISI VE KONTROLÜ
+if config.SESSION:
+    userbot = Client(
+        "pi_assistant",
+        api_id=config.API_ID,
+        api_hash=config.API_HASH,
+        session_string=config.SESSION
+    )
+    # EUREKA: Ses modülüne Botu değil, ASİSTANI bağlıyoruz!
+    call = PyTgCalls(userbot) 
+else:
+    print("❌ KRİTİK HATA: config.py veya Koyeb üzerinde SESSION (Asistan) kodu bulunamadı!")
+    call = PyTgCalls(bot)
 
-# BURASI ÇOK ÖNEMLİ: Player dosyasındaki 'call' değişkenini bağlıyoruz
 player.call = call 
 
 async def main():
     print("İstemciler başlatılıyor...")
     await bot.start()
+    
+    # Asistanın hesaba giriş yapıp yapmadığını kontrol et
+    if config.SESSION:
+        try:
+            await userbot.start()
+            print("✅ Asistan Hesap (Userbot) Başarıyla Telegram'a Bağlandı!")
+        except Exception as e:
+            print(f"❌ Asistan Bağlantı Hatası: Lütfen SESSION kodunu kontrol et! Hata: {e}")
+            
     await call.start()
     print("✅ Pi-Müzik Botu Başarıyla Çalışıyor!")
     await idle()
