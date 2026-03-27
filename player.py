@@ -22,7 +22,6 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     if chat_id not in music_queue:
         music_queue[chat_id] = []
     
-    # 5 Şarkı Sınırı Kontrolü 
     if len(music_queue[chat_id]) >= 5:
         return "FULL"
         
@@ -42,6 +41,8 @@ async def stream_end_handler(chat_id):
             return next_song
         else:
             music_queue.pop(chat_id, None)
-            await call.leave_group_call(chat_id)
+            try:
+                await call.leave_group_call(chat_id)
+            except: pass
             return "EMPTY"
     return None
