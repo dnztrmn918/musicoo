@@ -30,18 +30,22 @@ async def stream_end_handler(client, update):
     from pytgcalls.types.stream import StreamAudioEnded
     if isinstance(update, StreamAudioEnded):
         chat_id = update.chat_id
-        result = await player.stream_end_handler(chat_id)
-        
-        # Hata buradaydı: Botun bağlı olduğundan emin oluyoruz
-        if bot.is_connected:
-            if result == "EMPTY":
-                await bot.send_message(chat_id, "ℹ️ **Kuyruk bitti, asistan ayrılıyor.** 👋")
-            elif result:
-                await bot.send_message(
-                    chat_id, 
-                    player.format_playing_message(result["info"], result["by"]), 
-                    reply_markup=player.get_player_ui()
-                )
+        # Kuyruk işlemlerini güvenli bir try-except bloğuna alıyoruz
+        try:
+            result = await player.stream_end_handler(chat_id)
+            
+            # bot nesnesinin başlatıldığından ve bağlı olduğundan emin ol
+            if bot and bot.is_connected:
+                if result == "EMPTY":
+                    await bot.send_message(chat_id, "ℹ️ **Kuyruk bitti, asistan ayrılıyor.** 👋")
+                elif result:
+                    await bot.send_message(
+                        chat_id, 
+                        player.format_playing_message(result["info"], result["by"]), 
+                        reply_markup=player.get_player_ui()
+                    )
+        except Exception as e:
+            print(f"Stream End Hatası: {e}")
 
 async def main():
     print("🚀 Sistem başlatılıyor...")
