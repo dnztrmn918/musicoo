@@ -1,5 +1,6 @@
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pytgcalls.types import AudioPiped
+import asyncio
 
 music_queue = {}
 call = None  
@@ -29,29 +30,34 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
     
     if len(music_queue[chat_id]) == 1:
-        await call.join_group_call(chat_id, AudioPiped(song_info['url']))
-        return "PLAYING"
+        try:
+            await call.join_group_call(chat_id, AudioPiped(song_info['url']))
+            return "PLAYING"
+        except Exception as e:
+            print(f"Oynatma hatası: {e}")
+            music_queue.pop(chat_id, None) # Hata olursa kuyruğu temizle ki kilitlenmesin
+            return "ERROR"
     return "QUEUED"
 
 async def stream_end_handler(chat_id):
     if chat_id in music_queue:
-        if len(music_queue[chat_id]) > 1:
-            music_queue[chat_id].pop(0) 
+        # Mevcut (biten) şarkıyı listeden çıkar
+        music_queue[chat_id].pop(0) 
+        
+        if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
-            
             try:
-                # Yeni yayına geçerken oluşabilecek bağlantı hatalarını yakala
+                # Sıradaki şarkıya geçişi zorla
                 await call.change_stream(chat_id, AudioPiped(next_song['info']['url']))
                 return next_song
             except Exception as e:
-                print(f"Ses kaynağı hatası, sıradaki şarkıya zorlanıyor: {e}")
-                # Eğer bu şarkı bozuksa, bir sonrakini denemek için fonksiyonu tekrar çağır
+                print(f"Sıradaki şarkıya geçiş hatası: {e}")
+                # Eğer sıradaki şarkı bozuksa, bir sonrakini dene (recursive)
                 return await stream_end_handler(chat_id)
         else:
+            # Kuyruk gerçekten bittiyse temizle ve çık
             music_queue.pop(chat_id, None)
-            try:
-                await call.leave_group_call(chat_id)
-            except:
-                pass
+            try: await call.leave_group_call(chat_id)
+            except: pass
             return "EMPTY"
     return None
