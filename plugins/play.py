@@ -14,6 +14,7 @@ async def play_command(client, message):
     
     m = await message.reply("📡 **Asistan bağlanıyor...**")
     
+    # Asistanın odaya katılım kontrolü
     join_status = await assistant_join(client, chat_id)
     if join_status == "ADMIN_REQUIRED":
         return await m.edit("❌ **Beni yönetici yapmalı ve 'Davet Bağlantısı Oluşturma' yetkisi vermelisiniz.**")
@@ -24,10 +25,13 @@ async def play_command(client, message):
         query = message.text.split(None, 1)[1]
         song_info = search_youtube(query)
         
+        # player.py üzerinden kuyruğa ekle veya çal
         res = await player.add_to_queue_or_play(chat_id, song_info, message.from_user.mention)
         
-        if res == "ERROR":
-            return await m.edit("❌ **Asistan sese katılamadı!**\n\nGrupta sesli sohbetin **başlatıldığından** emin olun.")
+        # EĞER GERÇEK BİR HATA VARSA EKRANA BASAR
+        if str(res).startswith("ERROR_DETAIL:"):
+            hata_mesaji = res.split("ERROR_DETAIL: ")[1]
+            return await m.edit(f"❌ **Asistan sese katılamadı!**\n\n🔎 **GERÇEK HATA:** `{hata_mesaji}`\n\nLütfen grupta sesli sohbetin **başlatıldığından** emin olun.")
         elif res == "FULL":
             return await m.edit("⚠️ **Kuyruk dolu!** (Maksimum 5 şarkı eklenebilir. Mevcutları silmek için `/sil` kullanın.)")
         
