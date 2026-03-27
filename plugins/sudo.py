@@ -4,9 +4,7 @@ import config
 from database import get_served_chats, get_served_users
 
 def get_readable_time(seconds: int) -> str:
-    count = 0
-    ping_time = ""
-    time_list = []
+    count, ping_time, time_list = 0, "", []
     time_suffix_list = ["s", "m", "h", "d"]
     while count < 4:
         count += 1
@@ -18,14 +16,39 @@ def get_readable_time(seconds: int) -> str:
         time_list[i] = str(time_list[i]) + time_suffix_list[i]
     if len(time_list) == 4: ping_time += time_list.pop() + ", "
     time_list.reverse()
-    ping_time += ":".join(time_list)
-    return ping_time
+    return ping_time + ":".join(time_list)
+
+@Client.on_message(filters.command("sudoadd") & filters.user(config.SUDO_USERS))
+async def add_sudo(client, message):
+    user_id = None
+    if message.reply_to_message:
+        user_id = message.reply_to_message.from_user.id
+    elif len(message.command) > 1:
+        user_id = int(message.command[1])
+    
+    if not user_id:
+        return await message.reply("📖 **Kullanım:** Bir mesajı yanıtlayın veya ID yazın.")
+
+    if user_id not in config.SUDO_USERS:
+        config.SUDO_USERS.append(user_id)
+        await message.reply(f"✅ `{user_id}` Sudo listesine eklendi.")
+    else:
+        await message.reply("⚠️ Bu kullanıcı zaten Sudo.")
+
+@Client.on_message(filters.command("sudosil") & filters.user(config.SUDO_USERS))
+async def remove_sudo(client, message):
+    user_id = int(message.command[1]) if len(message.command) > 1 else None
+    if message.reply_to_message: user_id = message.reply_to_message.from_user.id
+    
+    if user_id in config.SUDO_USERS:
+        config.SUDO_USERS.remove(user_id)
+        await message.reply(f"🗑 `{user_id}` Sudo listesinden çıkarıldı.")
+    else:
+        await message.reply("❌ Bu kullanıcı Sudo değil.")
 
 @Client.on_message(filters.command("bilgi") & filters.user(config.SUDO_USERS))
 async def info_to_channel(client, message):
     m = await message.reply_text("⏳ **Veriler senkronize ediliyor...**")
-    
-    # main'den verileri güvenli çekiyoruz
     import main
     all_chats = await get_served_chats()
     all_users = await get_served_users()
