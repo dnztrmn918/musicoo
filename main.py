@@ -5,7 +5,7 @@ from pytgcalls import PyTgCalls
 import config, player 
 from database import init_db
 
-# Uptime için değişken (Hata almamak için EN ÜSTTE olmalı)
+# CRITICAL: ImportError'u önlemek için START_TIME en üstte tanımlanmalı
 START_TIME = time.time() 
 
 bot = Client(
@@ -26,10 +26,10 @@ userbot = Client(
 call = PyTgCalls(userbot)
 player.call = call 
 
-# Şarkı bittiğinde çalışacak fonksiyonu bağla
+# Olay yöneticisini events.py dosyasına bağla
 @call.on_stream_end()
 async def stream_end_handler(client, update):
-    from plugins.assistant import on_stream_end_handler
+    from plugins.events import on_stream_end_handler
     await on_stream_end_handler(client, update)
 
 async def main():
@@ -40,10 +40,10 @@ async def main():
     await call.start()
     
     try:
-        await bot.send_message(config.LOG_GROUP_ID, "✅ **Sistem ve Asistan Başarıyla Çevrimiçi!**")
+        await bot.send_message(config.LOG_GROUP_ID, "✅ **Nowa-Müzik Sistemi ve Asistan Çevrimiçi!**")
     except: pass
     
-    print("✅ Pi-Müzik Botu ve Asistan Sorunsuz Başlatıldı!")
+    print("✅ Bot ve Asistan Sorunsuz Başlatıldı!")
     await idle()
 
 if __name__ == "__main__":
