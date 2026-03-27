@@ -1,5 +1,5 @@
 pyrogram
-py-tgcalls==2.1.2
+py-tgcalls==2.1.1
 yt-dlp
 tgcrypto
 asyncpg
