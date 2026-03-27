@@ -1,13 +1,12 @@
 import yt_dlp
 
 def search_youtube(query):
-    # Çerez dosyasına GEREK YOK!
-    # Youtube'u atlıyor, SoundCloud'da arıyoruz.
+    # SoundCloud araması için optimize edilmiş ayarlar
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
-        'default_search': 'scsearch', # SİHİRLİ KİŞİM: Youtube yerine SoundCloud
+        'default_search': 'scsearch', 
         'nocheckcertificate': True,
     }
     
@@ -15,15 +14,19 @@ def search_youtube(query):
         if not query.startswith("http"):
             query = f"scsearch:{query}"
             
-        info = ydl.extract_info(query, download=False)
-        
-        if 'entries' in info:
-            info = info['entries'][0]
+        try:
+            info = ydl.extract_info(query, download=False)
+            if 'entries' in info:
+                if not info['entries']:
+                    raise Exception("Aranan parça bulunamadı. 😕")
+                info = info['entries'][0]
+        except Exception as e:
+            raise Exception(f"Arama hatası: {str(e)}")
             
         return {
-            'title': info.get('title'),
+            'title': info.get('title', 'Bilinmeyen Şarkı'),
             'duration': info.get('duration_string', 'Bilinmiyor'),
-            'thumbnail': info.get('thumbnail'),
-            'url': info.get('url'), # Oynatılacak ham ses dosyası
+            'thumbnail': info.get('thumbnail'), # SoundCloud'dan gelen görsel
+            'url': info.get('url'), # Ham ses linki
             'webpage_url': info.get('webpage_url', 'https://soundcloud.com')
         }
