@@ -1,4 +1,5 @@
 from pyrogram import Client, filters
+from pyrogram.enums import ChatMemberStatus
 from search import search_youtube
 import player
 from pytgcalls.exceptions import NoActiveGroupCall
@@ -8,9 +9,23 @@ from database import add_served_chat
 
 PREFIXES = ["/", "."]
 
+# KULLANICI YETKİ KONTROL FONKSİYONU
+async def has_voice_perms(client, chat_id, user_id):
+    if user_id in config.SUDO_USERS: # Sudo kullanıcılar her zaman yetkilidir
+        return True
+    try:
+        member = await client.get_chat_member(chat_id, user_id)
+        if member.status == ChatMemberStatus.OWNER:
+            return True
+        if member.status == ChatMemberStatus.ADMINISTRATOR:
+            return member.privileges.can_manage_video_chats if member.privileges else False
+    except:
+        pass
+    return False
+
 @Client.on_message(filters.command(["play", "oynat"], prefixes=PREFIXES) & filters.group)
 async def play_command(client, message):
-    await add_served_chat(message.chat.id) # Grubu veritabanına kaydeder
+    await add_served_chat(message.chat.id) 
     
     if len(message.command) < 2:
         return await message.reply_text("Lütfen oynatmak için bir şarkı ismi girin.")
@@ -48,14 +63,28 @@ async def play_command(client, message):
 
 @Client.on_message(filters.command(["stop", "dur"], prefixes=PREFIXES) & filters.group)
 async def pause_command(client, message):
+    has_perm = await has_voice_perms(client, message.chat.id, message.from_user.id)
+    if not has_perm:
+        return await message.reply_text(
+            f"Üzgünüm {message.from_user.mention}, bu işlemi yapmak için grupta **'Sesli Sohbetleri Yönet'** yetkisine sahip olmalısın.",
+            reply_to_message_id=message.id
+        )
+
     try:
         await player.call.pause_stream(message.chat.id)
-        await message.reply_text("⏸ Müzik duraklatıldı. (Devam etmek için panelden oynat butonuna basın)")
+        await message.reply_text("⏸ Müzik duraklatıldı.")
     except Exception:
         await message.reply_text("Şu an duraklatılacak bir müzik çalmıyor.")
 
 @Client.on_message(filters.command(["end", "bitir"], prefixes=PREFIXES) & filters.group)
 async def end_command(client, message):
+    has_perm = await has_voice_perms(client, message.chat.id, message.from_user.id)
+    if not has_perm:
+        return await message.reply_text(
+            f"Üzgünüm {message.from_user.mention}, bu işlemi yapmak için grupta **'Sesli Sohbetleri Yönet'** yetkisine sahip olmalısın.",
+            reply_to_message_id=message.id
+        )
+
     chat_id = message.chat.id
     if chat_id in player.music_queue:
         player.music_queue.pop(chat_id, None)
@@ -65,11 +94,9 @@ async def end_command(client, message):
     except Exception:
         pass
 
+# /list KOMUTU HERKESE AÇILDI
 @Client.on_message(filters.command(["que", "list"], prefixes=PREFIXES) & filters.group)
 async def queue_command(client, message):
-    if message.from_user.id not in config.SUDO_USERS:
-        return await message.reply_text("❌ Bu komutu sadece Sudo kullanıcılar kullanabilir.")
-        
     chat_id = message.chat.id
     if chat_id not in player.music_queue or not player.music_queue[chat_id]:
         return await message.reply_text("Sırada bekleyen hiçbir şarkı yok.")
@@ -83,10 +110,18 @@ async def queue_command(client, message):
             
     await message.reply_text(text, disable_web_page_preview=True)
 
+# BUTONLARDA DA YETKİ KONTROLÜ
 @Client.on_callback_query()
 async def callbacks(client, CallbackQuery):
     chat_id = CallbackQuery.message.chat.id
+    user_id = CallbackQuery.from_user.id
     data = CallbackQuery.data
+
+    # Butona basan kişinin sesli sohbet yetkisi var mı kontrol et
+    if data in ["pause", "resume", "end", "skip"]:
+        has_perm = await has_voice_perms(client, chat_id, user_id)
+        if not has_perm:
+            return await CallbackQuery.answer("❌ Bu butonu kullanmak için 'Sesli Sohbetleri Yönet' yetkisine ihtiyacın var!", show_alert=True)
 
     try:
         if data == "pause":
