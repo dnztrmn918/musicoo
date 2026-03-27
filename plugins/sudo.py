@@ -3,10 +3,6 @@ import time
 import config
 from database import add_sudo_user, remove_sudo_user, get_sudo_users, is_sudo, get_served_chats, get_served_users
 
-
-# ────────────────────────────────────────────────
-#  SADECE OWNER YETKİLİ KOMUTLAR
-# ────────────────────────────────────────────────
 @Client.on_message(filters.command("sudoadd"))
 async def sudo_add(client, message):
     uid = message.from_user.id
@@ -24,7 +20,11 @@ async def sudo_add(client, message):
     if target == config.SUDO_OWNER_ID:
         return await message.reply("⚠️ Sahibin zaten sudo yetkisi var.")
 
+    # Veritabanına ve config listesine anında ekler
     await add_sudo_user(target)
+    if target not in config.SUDO_USERS:
+        config.SUDO_USERS.append(target)
+        
     await message.reply(f"✅ `{target}` **sudo listesine eklendi.**")
 
 
@@ -44,13 +44,14 @@ async def sudo_del(client, message):
     if target == config.SUDO_OWNER_ID:
         return await message.reply("⚠️ Owner silinemez.")
 
+    # Veritabanından ve config listesinden anında siler
     await remove_sudo_user(target)
+    if target in config.SUDO_USERS:
+        config.SUDO_USERS.remove(target)
+        
     await message.reply(f"🗑 `{target}` **sudo listesinden çıkarıldı.**")
 
 
-# ────────────────────────────────────────────────
-#  SUDO / STAT KOMUTLARI
-# ────────────────────────────────────────────────
 @Client.on_message(filters.command("sudolist"))
 async def sudo_list(client, message):
     if not await is_sudo(message.from_user.id):
@@ -73,8 +74,10 @@ async def bot_info(client, message):
 
     uptime = time.strftime("%H:%M:%S", time.gmtime(time.time() - main.START_TIME))
     ping_start = time.time()
+    
+    # URL HATASI DÜZELTİLDİ
     try:
-        sc = requests.get("[soundcloud.com](https://soundcloud.com)", timeout=5)
+        sc = requests.get("https://soundcloud.com", timeout=5)
         sc_stat = "🟢 Aktif" if sc.status_code == 200 else "🟡 Yavaş"
     except:
         sc_stat = "🔴 Kapalı"
