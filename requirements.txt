@@ -4,3 +4,5 @@ ntgcalls==1.0.1
 yt-dlp
 tgcrypto
 asyncpg
+psutil
+requests
