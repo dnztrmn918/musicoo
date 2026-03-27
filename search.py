@@ -1,16 +1,20 @@
 import yt_dlp
 
 def search_youtube(query):
+    # Öncelik tamamen SoundCloud'a verildi
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
-        'default_search': 'auto',  # Sadece SoundCloud değil, her yeri arar
-        'nocheckcertificate': True,
-        'cookiefile': 'cookies.txt' # Botun engellenmemesi için eklenen kritik satır
+        'default_search': 'scsearch',  # SoundCloud araması
+        'nocheckcertificate': True
     }
     
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        # Eğer kullanıcı direkt link atmadıysa (isim yazdıysa) SoundCloud'da ara
+        if not query.startswith("http"):
+            query = f"scsearch:{query}"
+            
         try:
             info = ydl.extract_info(query, download=False)
             if 'entries' in info:
@@ -23,7 +27,7 @@ def search_youtube(query):
         return {
             'title': info.get('title', 'Bilinmeyen Şarkı'),
             'duration': info.get('duration_string', str(info.get('duration', 'Bilinmiyor'))),
-            'thumbnail': info.get('thumbnail'), 
-            'url': info.get('url'), 
-            'webpage_url': info.get('webpage_url', 'https://youtube.com')
+            'thumbnail': info.get('thumbnail'), # SoundCloud kapağı
+            'url': info.get('url'), # Ham ses dosyası
+            'webpage_url': info.get('webpage_url', 'https://soundcloud.com')
         }
