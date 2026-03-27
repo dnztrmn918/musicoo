@@ -8,7 +8,7 @@ import config
 from database import add_served_chat
 
 PREFIXES = ["/", "."]
-playing_messages = {} # Eski mesajları takip etmek için
+playing_messages = {} # Sohbeti temiz tutmak için mesaj ID takibi
 
 async def has_voice_perms(client, chat_id, user_id):
     if user_id in config.SUDO_USERS: return True
@@ -23,7 +23,7 @@ async def play_command(client, message):
     if len(message.command) < 2: return await message.reply("Şarkı adı girin.")
     
     query = message.text.split(None, 1)[1]
-    m = await message.reply("🔍 Aranıyor...")
+    m = await message.reply("🔍 Şarkı aranıyor...")
     
     try:
         song_info = search_youtube(query)
@@ -31,9 +31,9 @@ async def play_command(client, message):
         res = await player.add_to_queue_or_play(message.chat.id, song_info, requested_by)
         
         if res == "FULL":
-            await m.edit("⚠️ Kuyruk dolu (Maks 5).")
+            await m.edit("⚠️ Kuyruk dolu! (Maksimum 5 şarkı)")
         else:
-            # Eski mesajı silme işlemi
+            # Önceki mesajı temizle
             if message.chat.id in playing_messages:
                 try: await playing_messages[message.chat.id].delete()
                 except: pass
@@ -69,7 +69,15 @@ async def queue_command(client, message):
         text += f"{prefix}{s['info']['title']} | 👤 {s['by']}\n"
     await message.reply(text, disable_web_page_preview=True)
 
-# --- BUTONLARIN VE STOP/END KOMUTLARININ TAMAMI BURADA ---
+# RELOAD: Herkese açık, sadece gruplarda çalışır
+@Client.on_message(filters.command(["reload"], prefixes=PREFIXES) & filters.group)
+async def reload_cmd(client, message):
+    try:
+        await client.get_chat_administrators(message.chat.id)
+        await message.reply("✅ Yönetici listesi güncellendi. Önbellek temizlendi.")
+    except:
+        await message.reply("⚠️ Önbellek temizlenirken bir hata oluştu.")
+
 @Client.on_callback_query()
 async def callback_handler(client, query):
     chat_id = query.message.chat.id
