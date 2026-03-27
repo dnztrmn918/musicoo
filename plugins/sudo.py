@@ -7,20 +7,24 @@ from database import get_served_chats, get_served_users
 async def add_sudo(client, message):
     user_id = message.reply_to_message.from_user.id if message.reply_to_message else (int(message.command[1]) if len(message.command) > 1 else None)
     if not user_id: return await message.reply("📖 ID yazın veya mesajı yanıtlayın.")
-
     if user_id not in config.SUDO_USERS:
         config.SUDO_USERS.append(user_id)
-        # Buraya database.add_sudo_user(user_id) eklenebilir
-        await message.reply(f"✅ `{user_id}` Sudo listesine eklendi.")
-    else:
-        await message.reply("⚠️ Zaten Sudo.")
+        await message.reply(f"✅ `{user_id}` Sudo yapıldı.")
+    else: await message.reply("⚠️ Zaten Sudo.")
+
+@Client.on_message(filters.command("sudosil") & filters.user(config.SUDO_USERS))
+async def remove_sudo(client, message):
+    user_id = message.reply_to_message.from_user.id if message.reply_to_message else (int(message.command[1]) if len(message.command) > 1 else None)
+    if user_id in config.SUDO_USERS:
+        config.SUDO_USERS.remove(user_id)
+        await message.reply(f"🗑 `{user_id}` Sudo'dan çıkarıldı.")
+    else: await message.reply("❌ Sudo değil.")
 
 @Client.on_message(filters.command("bilgi") & filters.user(config.SUDO_USERS))
 async def info_to_channel(client, message):
     import main
-    all_chats = await get_served_chats()
     uptime = time.strftime("%H:%M:%S", time.gmtime(time.time() - main.START_TIME))
-    
+    all_chats = await get_served_chats()
     stats_text = (
         "┌────────────────────┐\n"
         "        SİSTEM İSTATİSTİKLERİ \n"
@@ -31,7 +35,5 @@ async def info_to_channel(client, message):
         "━━━━━━━━━━━━━━━━━━━━\n"
         f"Powered by @{client.me.username}"
     )
-    try:
-        await client.send_message(config.STATS_CHANNEL_ID, stats_text)
-        await message.reply("✅ Rapor iletildi.")
-    except Exception as e: await message.reply(f"❌ Hata: {e}")
+    await client.send_message(config.STATS_CHANNEL_ID, stats_text)
+    await message.reply("✅ İstatistik iletildi.")
