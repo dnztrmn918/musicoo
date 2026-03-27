@@ -3,49 +3,48 @@ import psutil
 import requests
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import config
 from database import db_pool
 
 @Client.on_message(filters.command("durum"))
 async def stats_cmd(client, message):
-    m = await message.reply_text("📡 **Sistem analiz ediliyor...**")
+    m = await message.reply_text("📡 **Durum kontrol ediliyor...**")
     start_t = time.time()
-    
-    # 🌩️ SoundCloud Bağlantı Testi
+
+    # SoundCloud bağlantı testi
     try:
-        sc_req = requests.get("https://soundcloud.com", timeout=5)
+        sc_req = requests.get("[soundcloud.com](https://soundcloud.com)", timeout=5)
         sc_status = "🟢 Çevrimiçi" if sc_req.status_code == 200 else "🟡 Yavaş"
-    except:
+    except Exception:
         sc_status = "🔴 Erişilemiyor"
 
-    # 🗄️ Veritabanı Ping (PostgreSQL)
-    db_ping = "Bağlı Değil"
-    if db_pool:
-        db_s = time.time()
+    db_ping = "❌ Yok"
+    try:
         async with db_pool.acquire() as conn:
+            db_s = time.time()
             await conn.execute("SELECT 1")
-        db_ping = f"{round((time.time() - db_s) * 1000)} ms"
+            db_ping = f"✅ {round((time.time() - db_s)*1000)} ms"
+    except:
+        pass
 
-    ping = f"{round((time.time() - start_t) * 1000)} ms"
+    ping = f"{round((time.time() - start_t)*1000)} ms"
     cpu = psutil.cpu_percent()
     ram = psutil.virtual_memory().percent
 
     stats_msg = (
-        "🖥️ **MÜZİK SİSTEMİ ANALİZİ**\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"🚀 **Bot Ping:** `{ping}`\n"
-        f"☁️ **SoundCloud:** `{sc_status}`\n"
-        f"🗄️ **Veritabanı:** `{db_ping}`\n"
-        f"🧠 **CPU Yükü:** `% {cpu}`\n"
-        f"💾 **RAM Kullanımı:** `% {ram}`\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"👤 **Sorgulayan:** {message.from_user.first_name}\n"
-        "✨ *Sistem şu an müzik yayını için optimize.*"
+        "╔═══════════════════════╗\n"
+        "    📊 𝙎𝙄𝙎𝙏𝙀𝙈 𝘿𝙐𝙍𝙐𝙈𝙐\n"
+        "╚═══════════════════════╝\n\n"
+        f"⚙️ **Bot Ping:** `{ping}`\n"
+        f"🎶 **SoundCloud:** `{sc_status}`\n"
+        f"🗄️ **Veritabanı:** {db_ping}\n"
+        f"🧠 **CPU:** `%{cpu}` | **RAM:** `%{ram}`\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🕹️ *Sistem aktif ve yayın için hazır.*"
     )
 
     await m.edit(
         stats_msg,
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🗑️ Paneli Kapat", callback_data="close_stats")]
-        ])
+        reply_markup=InlineKeyboardMarkup(
+            [[InlineKeyboardButton("🗑️ Paneli Kapat", callback_data="close_stats")]]
+        ),
     )
