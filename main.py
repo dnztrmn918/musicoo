@@ -5,7 +5,7 @@ from pytgcalls import PyTgCalls
 import config, player 
 from database import init_db
 
-# Uptime takibi için değişken (ImportError'u önlemek için en üstte)
+# Uptime için değişken (Hata almamak için EN ÜSTTE olmalı)
 START_TIME = time.time() 
 
 bot = Client(
@@ -26,7 +26,7 @@ userbot = Client(
 call = PyTgCalls(userbot)
 player.call = call 
 
-# Şarkı bittiğinde plugins/assistant.py dosyasındaki fonksiyonu çağırır
+# Şarkı bittiğinde çalışacak fonksiyonu bağla
 @call.on_stream_end()
 async def stream_end_handler(client, update):
     from plugins.assistant import on_stream_end_handler
