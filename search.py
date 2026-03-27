@@ -1,23 +1,31 @@
 import yt_dlp
+import os
 
 def search_youtube(query):
+    # Sunucudaki tam dosya yolunu buluyoruz (Örn: /app/cookies.txt)
+    cookie_path = os.path.abspath("cookies.txt")
+    
+    # KONSOLA YAZDIR: Dosya gerçekten orada mı?
+    if os.path.exists(cookie_path):
+        print(f"✅ Çerez dosyası BURADA: {cookie_path}")
+    else:
+        print(f"❌ DİKKAT: Çerez dosyası BULUNAMADI! Aranan yer: {cookie_path}")
+
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch',
-        'cookiefile': 'cookies.txt',
+        'cookiefile': cookie_path, # Artık tahmini değil, tam adresi veriyoruz
         'nocheckcertificate': True,
-        # BÜTÜN SİHİR BURADA: Web arayüzünü tamamen atla, sadece mobil cihaz gibi davran
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'ios'], # Sadece Android ve iOS
-                'player_skip': ['webpage', 'default'] # Bot kontrolünün yapıldığı web sayfasını es geç
+                'player_client': ['android', 'ios'],
+                'player_skip': ['webpage', 'default']
             }
         },
-        # YouTube'u normal bir kullanıcı olduğumuza inandırmak için sahte kimlik:
         'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         }
     }
     
@@ -34,6 +42,6 @@ def search_youtube(query):
             'title': info.get('title'),
             'duration': info.get('duration_string', 'Bilinmiyor'),
             'thumbnail': info.get('thumbnail'),
-            'url': info.get('url'), # Bu, doğrudan ses dosyasıdır
+            'url': info.get('url'),
             'webpage_url': info.get('webpage_url')
         }
