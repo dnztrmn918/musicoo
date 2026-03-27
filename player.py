@@ -3,8 +3,8 @@ from pytgcalls.types import AudioPiped
 
 music_queue = {}
 call = None    # main.py tarafından doldurulacak
-userbot = None # main.py tarafından doldurulacak (YENİ)
-bot = None     # main.py tarafından doldurulacak (YENİ)
+userbot = None # main.py tarafından doldurulacak
+bot = None     # main.py tarafından doldurulacak
 
 def get_player_ui():
     from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -35,11 +35,14 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
+            # Userbot'un grubu hafızasına alması için ufak bir ping atıyoruz
+            if userbot:
+                await userbot.get_chat(chat_id) 
             await call.join_group_call(chat_id, AudioPiped(song_info["url"]))
             return "PLAYING"
         except Exception as e:
             music_queue.pop(chat_id, None)
-            return "ERROR"
+            return f"ERROR_DETAIL: {str(e)}"
     return "QUEUED"
 
 async def stream_end_handler(chat_id):
