@@ -14,7 +14,6 @@ async def play_command(client, message):
     
     m = await message.reply("📡 **Asistan bağlanıyor...**")
     
-    # Asistanın odaya katılım kontrolü
     join_status = await assistant_join(client, chat_id)
     if join_status == "ADMIN_REQUIRED":
         return await m.edit("❌ **Beni yönetici yapmalı ve 'Davet Bağlantısı Oluşturma' yetkisi vermelisiniz.**")
@@ -25,10 +24,8 @@ async def play_command(client, message):
         query = message.text.split(None, 1)[1]
         song_info = search_youtube(query)
         
-        # player.py üzerinden kuyruğa ekle veya çal
         res = await player.add_to_queue_or_play(chat_id, song_info, message.from_user.mention)
         
-        # EĞER GERÇEK BİR HATA VARSA EKRANA BASAR
         if str(res).startswith("ERROR_DETAIL:"):
             hata_mesaji = res.split("ERROR_DETAIL: ")[1]
             return await m.edit(f"❌ **Asistan sese katılamadı!**\n\n🔎 **GERÇEK HATA:** `{hata_mesaji}`\n\nLütfen grupta sesli sohbetin **başlatıldığından** emin olun.")
@@ -82,7 +79,7 @@ async def resume_cmd(client, message):
         pass
 
 # ────────────────────────────────────────────────
-# KUYRUK LİSTELEME KOMUTU (/que)
+# KUYRUK VE SİLME KOMUTLARI (/que, /sil)
 # ────────────────────────────────────────────────
 @Client.on_message(filters.command(["que", "kuyruk", "list"]) & filters.group)
 async def que_cmd(client, message):
@@ -98,28 +95,60 @@ async def que_cmd(client, message):
             text += f"**{i}.** `{song['info']['title']}`\n"
     await message.reply(text)
 
-# ────────────────────────────────────────────────
-# SİL KOMUTU (/sil)
-# ────────────────────────────────────────────────
 @Client.on_message(filters.command(["sil", "temizle"]) & filters.group)
 async def sil_cmd(client, message):
     chat_id = message.chat.id
-    
     if chat_id not in player.music_queue or len(player.music_queue[chat_id]) <= 1:
         return await message.reply("📭 **Silinecek bir kuyruk yok.**")
-    
     if len(message.command) == 1:
         player.music_queue[chat_id] = [player.music_queue[chat_id][0]]
         return await message.reply("🗑 **Kuyruk tamamen temizlendi!** (Şu an çalan parça devam ediyor)")
-    
     try:
         index = int(message.command[1])
         max_index = len(player.music_queue[chat_id]) - 1
-        
         if index < 1 or index > max_index:
             return await message.reply(f"⚠️ **Geçersiz sıra numarası!** (1 ile {max_index} arasında bir sayı girin)")
-        
         removed = player.music_queue[chat_id].pop(index)
         await message.reply(f"🗑 **Sıradan çıkarıldı:** `{removed['info']['title']}`")
     except ValueError:
         await message.reply("⚠️ **Lütfen geçerli bir sayı girin.** (Örnek: `/sil 1`)")
+
+# ────────────────────────────────────────────────
+# YENİ: MÜZİK BUTONLARI KONTROLÜ (Sadece müzik ikonlarını dinler)
+# ────────────────────────────────────────────────
+@Client.on_callback_query(filters.regex("^(pause|resume|skip|end)$"))
+async def music_callbacks(client, query):
+    chat_id = query.message.chat.id
+    data = query.data
+
+    if data == "pause":
+        try:
+            await player.call.pause_stream(chat_id)
+            await query.answer("⏸ Yayın duraklatıldı.")
+        except:
+            await query.answer("❌ İşlem başarısız.", show_alert=True)
+
+    elif data == "resume":
+        try:
+            await player.call.resume_stream(chat_id)
+            await query.answer("▶️ Yayın devam ediyor.")
+        except:
+            await query.answer("❌ İşlem başarısız.", show_alert=True)
+
+    elif data == "skip":
+        await query.answer("⏭ Sıradaki şarkıya geçiliyor...")
+        res = await player.stream_end_handler(chat_id)
+        if res == "EMPTY":
+            await client.send_message(chat_id, "⏹ **Kuyruk bitti, asistan ayrıldı.** 👋")
+            await query.message.delete()
+        elif res:
+            await client.send_message(chat_id, f"⏭ **Sıradaki:** `{res['info']['title']}`")
+            await query.message.delete()
+
+    elif data == "end":
+        player.music_queue.pop(chat_id, None)
+        try: await player.call.leave_group_call(chat_id)
+        except: pass
+        await query.answer("⏹ Yayın bitirildi.")
+        await query.message.delete()
+        await client.send_message(chat_id, "⏹ **Yayın sonlandırıldı ve asistan odadan ayrıldı.** 👋")
