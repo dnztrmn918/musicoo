@@ -12,9 +12,10 @@ def get_player_ui():
 
 def format_playing_message(song_info, requested_by):
     return (
-        f"🎵 **Şu An Oynatılıyor**\n\n"
+        f"🎶 **Şu An Oynatılıyor**\n\n"
         f"📌 **İsim:** [{song_info['title']}]({song_info['webpage_url']})\n"
-        f"👤 **Talep Eden:** {requested_by}"
+        f"👤 **Talep Eden:** {requested_by}\n\n"
+        f"⚡️ *Keyifli Dinlemeler!*"
     )
 
 async def add_to_queue_or_play(chat_id, song_info, requested_by):
@@ -41,8 +42,7 @@ async def stream_end_handler(chat_id):
             return next_song
         else:
             music_queue.pop(chat_id, None)
-            try:
-                await call.leave_group_call(chat_id)
+            try: await call.leave_group_call(chat_id)
             except: pass
             return "EMPTY"
     return None
