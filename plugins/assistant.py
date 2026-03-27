@@ -4,14 +4,13 @@ from pyrogram.errors import UserAlreadyParticipant, FloodWait, ChatAdminRequired
 
 async def assistant_join(client, chat_id):
     """Asistanın grupta olup olmadığını kontrol eder, yoksa katılır."""
-    from main import userbot
+    userbot = player.userbot  # Döngüsel hatayı kökten çözen satır
     try:
         me = await userbot.get_me()
         await client.get_chat_member(chat_id, me.id)
         return True
     except:
         try:
-            # Davet linki oluştur ve katıl
             invitelink = await client.export_chat_invite_link(chat_id)
             await userbot.join_chat(invitelink)
             return True
