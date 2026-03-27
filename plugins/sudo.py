@@ -9,7 +9,7 @@ async def add_sudo(client, message):
     if not user_id: return await message.reply("📖 ID yazın veya mesajı yanıtlayın.")
     if user_id not in config.SUDO_USERS:
         config.SUDO_USERS.append(user_id)
-        await message.reply(f"✅ `{user_id}` Sudo yapıldı.")
+        await message.reply(f"✅ `{user_id}` Sudo listesine eklendi.")
     else: await message.reply("⚠️ Zaten Sudo.")
 
 @Client.on_message(filters.command("sudosil") & filters.user(config.SUDO_USERS))
@@ -35,5 +35,7 @@ async def info_to_channel(client, message):
         "━━━━━━━━━━━━━━━━━━━━\n"
         f"Powered by @{client.me.username}"
     )
-    await client.send_message(config.STATS_CHANNEL_ID, stats_text)
-    await message.reply("✅ İstatistik iletildi.")
+    try:
+        await client.send_message(config.STATS_CHANNEL_ID, stats_text)
+        await message.reply("✅ İstatistik iletildi.")
+    except Exception as e: await message.reply(f"❌ Hata: {e}")
