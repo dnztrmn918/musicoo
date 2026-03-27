@@ -38,11 +38,20 @@ async def stream_end_handler(chat_id):
         if len(music_queue[chat_id]) > 1:
             music_queue[chat_id].pop(0) 
             next_song = music_queue[chat_id][0]
-            await call.change_stream(chat_id, AudioPiped(next_song['info']['url']))
-            return next_song
+            
+            try:
+                # Yeni yayına geçerken oluşabilecek bağlantı hatalarını yakala
+                await call.change_stream(chat_id, AudioPiped(next_song['info']['url']))
+                return next_song
+            except Exception as e:
+                print(f"Ses kaynağı hatası, sıradaki şarkıya zorlanıyor: {e}")
+                # Eğer bu şarkı bozuksa, bir sonrakini denemek için fonksiyonu tekrar çağır
+                return await stream_end_handler(chat_id)
         else:
             music_queue.pop(chat_id, None)
-            try: await call.leave_group_call(chat_id)
-            except: pass
+            try:
+                await call.leave_group_call(chat_id)
+            except:
+                pass
             return "EMPTY"
     return None
