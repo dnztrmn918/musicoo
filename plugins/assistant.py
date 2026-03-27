@@ -8,7 +8,7 @@ async def on_stream_end_handler(client, update):
         chat_id = update.chat_id
         result = await player.stream_end_handler(chat_id)
         
-        from main import bot
+        from main import bot # Fonksiyon içi import
         if result == "EMPTY":
             await bot.send_message(chat_id, "ℹ️ **Kuyruk bitti, asistan ayrılıyor.** 👋")
         elif result:
