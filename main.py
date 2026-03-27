@@ -26,9 +26,10 @@ userbot = Client(
 call = PyTgCalls(userbot)
 player.call = call 
 
+# Şarkı bittiğinde plugins/assistant.py dosyasındaki fonksiyonu çağırır
 @call.on_stream_end()
 async def stream_end_handler(client, update):
-    from assistant import on_stream_end_handler
+    from plugins.assistant import on_stream_end_handler
     await on_stream_end_handler(client, update)
 
 async def main():
