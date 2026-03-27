@@ -8,7 +8,7 @@ from database import db_pool
 
 @Client.on_message(filters.command("durum"))
 async def stats_cmd(client, message):
-    m = await message.reply_text("📡 **Sistem kontrol ediliyor...**")
+    m = await message.reply_text("📡 **Sistem analiz ediliyor...**")
     start_t = time.time()
     
     # 🌩️ SoundCloud Bağlantı Testi
@@ -18,8 +18,8 @@ async def stats_cmd(client, message):
     except:
         sc_status = "🔴 Erişilemiyor"
 
-    # 🗄️ Veritabanı Ping 
-    db_ping = "N/A"
+    # 🗄️ Veritabanı Ping (PostgreSQL)
+    db_ping = "Bağlı Değil"
     if db_pool:
         db_s = time.time()
         async with db_pool.acquire() as conn:
@@ -31,16 +31,16 @@ async def stats_cmd(client, message):
     ram = psutil.virtual_memory().percent
 
     stats_msg = (
-        "🖥️ **SUNUCU VE SİSTEM ANALİZİ**\n"
+        "🖥️ **MÜZİK SİSTEMİ ANALİZİ**\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         f"🚀 **Bot Ping:** `{ping}`\n"
         f"☁️ **SoundCloud:** `{sc_status}`\n"
-        f"🗄️ **Veritabanı Ping:** `{db_ping}`\n"
+        f"🗄️ **Veritabanı:** `{db_ping}`\n"
         f"🧠 **CPU Yükü:** `% {cpu}`\n"
         f"💾 **RAM Kullanımı:** `% {ram}`\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         f"👤 **Sorgulayan:** {message.from_user.first_name}\n"
-        "✨ *Zirve2 Müzik Sistemi Stabil.*"
+        "✨ *Sistem şu an müzik yayını için optimize.*"
     )
 
     await m.edit(
