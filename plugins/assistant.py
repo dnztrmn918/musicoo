@@ -23,7 +23,8 @@ async def on_stream_end_handler(client, update):
 async def assistant_join(client, chat_id):
     from main import userbot
     try:
-        await client.get_chat_member(chat_id, (await userbot.get_me()).id)
+        me = await userbot.get_me()
+        await client.get_chat_member(chat_id, me.id)
         return True
     except:
         try:
