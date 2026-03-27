@@ -14,7 +14,6 @@ async def play_command(client, message):
     
     m = await message.reply("📡 **Asistan bağlanıyor...**")
     
-    # Asistanın odaya katılım kontrolü
     join_status = await assistant_join(client, chat_id)
     if join_status == "ADMIN_REQUIRED":
         return await m.edit("❌ **Beni yönetici yapmalı ve 'Davet Bağlantısı Oluşturma' yetkisi vermelisiniz.**")
@@ -25,7 +24,6 @@ async def play_command(client, message):
         query = message.text.split(None, 1)[1]
         song_info = search_youtube(query)
         
-        # player.py üzerinden kuyruğa ekle veya çal
         res = await player.add_to_queue_or_play(chat_id, song_info, message.from_user.mention)
         
         if res == "ERROR":
@@ -85,7 +83,15 @@ async def resume_cmd(client, message):
 @Client.on_message(filters.command(["que", "kuyruk", "list"]) & filters.group)
 async def que_cmd(client, message):
     chat_id = message.chat.id
-    text = player.format_queue(chat_id)
+    if chat_id not in player.music_queue or not player.music_queue[chat_id]:
+        return await message.reply("📭 **Kuyruk boş.**")
+    
+    text = "🎼 **Kuyruk Listesi**\n\n"
+    for i, song in enumerate(player.music_queue[chat_id]):
+        if i == 0:
+            text += f"▶️ **Şu An Çalan:** `{song['info']['title']}`\n"
+        else:
+            text += f"**{i}.** `{song['info']['title']}`\n"
     await message.reply(text)
 
 # ────────────────────────────────────────────────
@@ -95,28 +101,21 @@ async def que_cmd(client, message):
 async def sil_cmd(client, message):
     chat_id = message.chat.id
     
-    # Kuyruk yoksa veya sadece çalan şarkı varsa silinecek bir şey yoktur
     if chat_id not in player.music_queue or len(player.music_queue[chat_id]) <= 1:
         return await message.reply("📭 **Silinecek bir kuyruk yok.**")
     
-    # Sadece /sil yazıldıysa (Parametre yoksa tüm kuyruğu temizle)
     if len(message.command) == 1:
-        # Çalan şarkıyı (0. index) tut, geri kalanını sil
         player.music_queue[chat_id] = [player.music_queue[chat_id][0]]
         return await message.reply("🗑 **Kuyruk tamamen temizlendi!** (Şu an çalan parça devam ediyor)")
     
-    # /sil 1 veya /sil 2 gibi sayı girildiyse
     try:
         index = int(message.command[1])
         max_index = len(player.music_queue[chat_id]) - 1
         
         if index < 1 or index > max_index:
-            return await message.reply(f"⚠️ **Geçersiz sıra numarası!** (Lütfen `1` ile `{max_index}` arasında bir sayı girin)")
+            return await message.reply(f"⚠️ **Geçersiz sıra numarası!** (1 ile {max_index} arasında bir sayı girin)")
         
-        # Seçilen şarkıyı kuyruktan çıkar
-        removed = player.remove_from_queue(chat_id, index)
-        if removed:
-            await message.reply(f"🗑 **Sıradan çıkarıldı:** `{removed['info']['title']}`")
-            
+        removed = player.music_queue[chat_id].pop(index)
+        await message.reply(f"🗑 **Sıradan çıkarıldı:** `{removed['info']['title']}`")
     except ValueError:
-        await message.reply("⚠️ **Lütfen geçerli bir sayı girin.** (Örnek kullanım: `/sil 1` veya `/sil 2`)")
+        await message.reply("⚠️ **Lütfen geçerli bir sayı girin.** (Örnek: `/sil 1`)")
