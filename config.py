@@ -1,24 +1,40 @@
 import os
 
-# --- TEMEL BOT AYARLARI ---
-API_ID = int(os.getenv("API_ID", "0")) # Telegram'dan alınan API ID
-API_HASH = os.getenv("API_HASH", "") # Telegram'dan alınan API HASH
-BOT_TOKEN = os.getenv("BOT_TOKEN", "") # @BotFather'dan alınan Token
-SESSION = os.getenv("SESSION", "") # Asistan hesap için Pyrogram String Session
+# ──────────────────────────────
+# TEMEL BOT AYARLARI
+# ──────────────────────────────
+API_ID = int(os.getenv("API_ID", "0"))
+API_HASH = os.getenv("API_HASH", "")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+SESSION = os.getenv("SESSION", "")
 
-# --- VERİTABANI VE YETKİLER ---
-# PostgreSQL bağlantı adresi
-DATABASE_URL = os.getenv("DATABASE_URL", "") 
+# ──────────────────────────────
+# VERİTABANI AYARLARI
+# ──────────────────────────────
+DATABASE_URL = os.getenv("DATABASE_URL", "")  # Koyeb Postgres URL'i
 
-# Sudo kullanıcıları (Komut yetkisi olan ID'ler, virgülle ayırın)
-SUDO_USERS = [int(x) for x in os.getenv("SUDO_USERS", "").split(",") if x.strip()]
-
-# --- LOG VE İSTATİSTİK AYARLARI ---
-# Botun eklendiği grupları bildireceği Grup ID
-LOG_GROUP_ID = int(os.getenv("LOG_GROUP_ID", "-1002222222222")) 
-
-# /bilgi komutunun rapor göndereceği Kanal ID
+# ──────────────────────────────
+# LOG / STATISTICS AYARLARI
+# ──────────────────────────────
+LOG_GROUP_ID = int(os.getenv("LOG_GROUP_ID", "-1002222222222"))
 STATS_CHANNEL_ID = int(os.getenv("STATS_CHANNEL_ID", "-1003333333333"))
 
-# --- EKSTRA AYARLAR ---
-# Müzik kalitesi veya diğer tercihler buraya eklenebilir
+# ──────────────────────────────
+# SUDO VE OWNER TANIMLARI
+# ──────────────────────────────
+# BOT OWNER ⇒ yalnız bu kullanıcı diğer sudo’ları ekleyip / silebilir
+SUDO_OWNER_ID = int(os.getenv("SUDO_OWNER_ID", "0"))
+
+# opsiyonel başlangıç sudo listesi (OWNER daima eklenir)
+SUDO_USERS = [
+    int(x) for x in os.getenv("SUDO_USERS", "").split(",") if x.strip().isdigit()
+]
+if SUDO_OWNER_ID and SUDO_OWNER_ID not in SUDO_USERS:
+    SUDO_USERS.append(SUDO_OWNER_ID)
+
+# ──────────────────────────────
+# DİĞER AYARLAR
+# ──────────────────────────────
+DEVELOPER_LINK = "[t.me](https://t.me/dnztrmnn)"
+CHANNEL_LINK = "[t.me](https://t.me/NowaDestek)"
+LOGO_PATH = os.path.join(os.getcwd(), "plugins", "logo.jpg")
