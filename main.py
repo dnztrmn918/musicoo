@@ -5,7 +5,7 @@ from pytgcalls import PyTgCalls
 import config, player 
 from database import init_db
 
-# Uptime takibi için başlangıç zamanı
+# Uptime takibi için değişken (ImportError'u önlemek için en üstte)
 START_TIME = time.time() 
 
 bot = Client(
