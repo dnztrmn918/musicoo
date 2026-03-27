@@ -33,29 +33,26 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
         try:
             await call.join_group_call(chat_id, AudioPiped(song_info['url']))
             return "PLAYING"
-        except Exception as e:
-            print(f"Oynatma hatası: {e}")
-            music_queue.pop(chat_id, None) # Hata olursa kuyruğu temizle ki kilitlenmesin
+        except Exception:
+            music_queue.pop(chat_id, None) # Hata anında kuyruğu sil ki kilitlenmesin 
             return "ERROR"
     return "QUEUED"
 
 async def stream_end_handler(chat_id):
     if chat_id in music_queue:
-        # Mevcut (biten) şarkıyı listeden çıkar
-        music_queue[chat_id].pop(0) 
+        # Mevcut şarkıyı listeden kesin olarak çıkar 
+        if len(music_queue[chat_id]) > 0:
+            music_queue[chat_id].pop(0) 
         
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
-                # Sıradaki şarkıya geçişi zorla
                 await call.change_stream(chat_id, AudioPiped(next_song['info']['url']))
                 return next_song
-            except Exception as e:
-                print(f"Sıradaki şarkıya geçiş hatası: {e}")
-                # Eğer sıradaki şarkı bozuksa, bir sonrakini dene (recursive)
+            except Exception:
                 return await stream_end_handler(chat_id)
         else:
-            # Kuyruk gerçekten bittiyse temizle ve çık
+            # Kuyruk bittiğinde veriyi temizle 
             music_queue.pop(chat_id, None)
             try: await call.leave_group_call(chat_id)
             except: pass
