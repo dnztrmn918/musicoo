@@ -5,7 +5,7 @@ from pytgcalls import PyTgCalls
 import config, player 
 from database import init_db
 
-# START_TIME EN ÜSTTE OLMALI
+# Uptime için başlangıç zamanı
 START_TIME = time.time() 
 
 bot = Client(
@@ -26,9 +26,10 @@ userbot = Client(
 call = PyTgCalls(userbot)
 player.call = call 
 
+# Asistan olaylarını assistant.py dosyasına yönlendiriyoruz
 @call.on_stream_end()
 async def stream_end_handler(client, update):
-    from plugins.start import on_stream_end_handler
+    from assistant import on_stream_end_handler
     await on_stream_end_handler(client, update)
 
 async def main():
@@ -38,7 +39,6 @@ async def main():
     await userbot.start()
     await call.start()
     
-    # Başlangıç Logu
     try:
         await bot.send_message(config.LOG_GROUP_ID, "✅ **Sistem ve Asistan Başarıyla Çevrimiçi!**")
     except: pass
