@@ -4,8 +4,11 @@ import requests
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import db_pool, get_served_users, get_served_chats, is_sudo
-import main
 import config
+
+# Botun başlatılma zamanını artık main'den çalmıyoruz, direkt burada başlatıyoruz.
+# Böylece o lanet olası "Kopya Asistan" bug'ını kökünden çözüyoruz!
+START_TIME = time.time()
 
 # ────────────────────────────────────────────────
 # HERKESE AÇIK DURUM KOMUTU (/durum)
@@ -16,7 +19,7 @@ async def stats_cmd(client, message):
     start_t = time.time()
 
     # Aktiflik süresi (Uptime) hesaplama
-    uptime_sec = int(time.time() - main.START_TIME)
+    uptime_sec = int(time.time() - START_TIME)
     mins, secs = divmod(uptime_sec, 60)
     hours, mins = divmod(mins, 60)
     days, hours = divmod(hours, 24)
@@ -70,12 +73,12 @@ async def bot_info(client, message):
     if not await is_sudo(message.from_user.id):
         return await message.reply("⛔ **Yalnızca SUDO kullanıcıları erişebilir.**")
 
-    uptime_sec = int(time.time() - main.START_TIME)
+    uptime_sec = int(time.time() - START_TIME)
     m, s = divmod(uptime_sec, 60)
     h, m = divmod(m, 60)
     d, h = divmod(h, 24)
     uptime = f"{d} gün, {h} saat, {m} dk" if d > 0 else f"{h} saat, {m} dakika, {s} saniye"
-    start_date = time.strftime("%d.%m.%Y %H:%M:%S", time.localtime(main.START_TIME))
+    start_date = time.strftime("%d.%m.%Y %H:%M:%S", time.localtime(START_TIME))
 
     ping_start = time.time()
     try:
