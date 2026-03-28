@@ -11,11 +11,10 @@ def search_youtube(query):
     if not keys:
         raise Exception("❌ API anahtarı bulunamadı! Koyeb YT_KEYS ayarını kontrol et.")
 
-    # Havuzdan rastgele bir anahtar seçerek günlük kotayı (10.000 unit) paylaştırır.
+    # Havuzdan rastgele bir anahtar seçerek günlük kotayı paylaştırır.
     api_key = random.choice(keys)
 
     # 2. ADIM: YOUTUBE DATA API V3 İLE ARAMA YAP
-    # Bu aşama çerez gerektirmez ve çok hızlı sonuç döndürür.
     search_url = "https://www.googleapis.com/youtube/v3/search"
     params = {
         'part': 'snippet',
@@ -37,12 +36,12 @@ def search_youtube(query):
     video_url = f"https://www.youtube.com/watch?v={video_id}"
     title = data['items'][0]['snippet']['title']
     
-    # Kapak fotoğrafı güvenliği (High yoksa default al)
+    # Kapak fotoğrafı güvenliği
     thumbnails = data['items'][0]['snippet'].get('thumbnails', {})
     thumb = thumbnails.get('high', thumbnails.get('default', {})).get('url', "https://telegra.ph/file/69204068595f57731936c.jpg")
 
-    # 3. ADIM: YT-DLP İLE SES AKIŞ LİNKİNİ AL
-    # "Sign in to confirm you're not a bot" hatasını aşmak için mobil istemci zorlaması ekledik.
+    # 3. ADIM: YT-DLP İLE SES AKIŞ LİNKİNİ AL (GÜÇLENDİRİLMİŞ)
+    # "Sign in to confirm you're not a bot" hatasını aşmak için gelişmiş istemci ayarları.
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
@@ -50,29 +49,27 @@ def search_youtube(query):
         'nocheckcertificate': True,
         'source_address': '0.0.0.0', # IPv4 zorlaması
         'geo_bypass': True,
-        # YouTube engelini aşmak için tarayıcı kimliği
+        # YouTube engelini aşmak için güncel tarayıcı kimliği
         'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        # KRİTİK: YouTube'un mobil uygulaması gibi davranarak çerez zorunluluğunu atlatır
+        'referer': 'https://www.youtube.com/',
+        # KRİTİK: YouTube Music ve Mobil istemcileri kullanarak bot kontrolünü atlatır
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'ios'],
+                'player_client': ['android', 'ios', 'youtube_music', 'mweb'],
+                'player_skip': ['webpage', 'configs'],
                 'skip': ['dash', 'hls']
             }
+        },
+        # Gerçek bir kullanıcı gibi ek başlıklar gönderiyoruz
+        'http_headers': {
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'tr-TR,tr;q=0.8,en-US;q=0.5,en;q=0.3',
+            'Upgrade-Insecure-Requests': '1',
         }
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # download=False: Dosyayı sunucuya indirmez, sadece doğrudan ses linkini (raw url) alır.
+            # download=False: Sadece ses akış linkini (raw url) alır.
             info = ydl.extract_info(video_url, download=False)
-            raw_url = info['url'] 
-    except Exception as e:
-        # Eğer hala hata verirse detaylı rapor sunar
-        raise Exception(f"YouTube Akış Hatası: {str(e)}")
-
-    return {
-        'title': title,
-        'thumbnail': thumb,
-        'file_path': raw_url, # player.py'nin 'AudioPiped' ile çalması için linki yol olarak döndürüyoruz.
-        'webpage_url': video_url
-    }
+            raw_url
