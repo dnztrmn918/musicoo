@@ -2,115 +2,57 @@ import time
 import psutil
 import requests
 from pyrogram import Client, filters
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from database import db_pool, get_served_users, get_served_chats, is_sudo
-import config
+from pyrogram.types import Message
+import player
+from main import START_TIME # Botun açılış zamanı
 
-# Botun başlatılma zamanını artık main'den çalmıyoruz, direkt burada başlatıyoruz.
-# Böylece o lanet olası "Kopya Asistan" bug'ını kökünden çözüyoruz!
-START_TIME = time.time()
-
-# ────────────────────────────────────────────────
-# HERKESE AÇIK DURUM KOMUTU (/durum)
-# ────────────────────────────────────────────────
-@Client.on_message(filters.command("durum"))
-async def stats_cmd(client, message):
-    m = await message.reply_text("📡 **Durum kontrol ediliyor...**")
-    start_t = time.time()
-
-    # Aktiflik süresi (Uptime) hesaplama
-    uptime_sec = int(time.time() - START_TIME)
-    mins, secs = divmod(uptime_sec, 60)
-    hours, mins = divmod(mins, 60)
-    days, hours = divmod(hours, 24)
-    uptime_str = f"{days}g {hours}s {mins}d {secs}s" if days > 0 else f"{hours}s {mins}d {secs}s"
-
-    try:
-        sc_req = requests.get("https://soundcloud.com", timeout=5)
-        sc_status = "🟢 Çevrimiçi" if sc_req.status_code == 200 else "🟡 Yavaş"
-    except Exception:
-        sc_status = "🔴 Erişilemiyor"
-
-    db_ping = "❌ Yok"
-    try:
-        async with db_pool.acquire() as conn:
-            db_s = time.time()
-            await conn.execute("SELECT 1")
-            db_ping = f"✅ {round((time.time() - db_s)*1000)} ms"
-    except:
-        pass
-
-    ping = f"{round((time.time() - start_t)*1000)} ms"
-    cpu = psutil.cpu_percent()
-    ram = psutil.virtual_memory().percent
-
-    stats_msg = (
-        "╔═══════════════════════╗\n"
-        "    📊 𝙎𝙄𝙎𝙏𝙀𝙈 𝘿𝙐𝙍𝙐𝙈𝙐\n"
-        "╚═══════════════════════╝\n\n"
-        f"⏱ **Aktiflik:** `{uptime_str}`\n"
-        f"⚙️ **Bot Ping:** `{ping}`\n"
-        f"🎶 **SoundCloud:** `{sc_status}`\n"
-        f"🗄️ **Veritabanı:** {db_ping}\n"
-        f"🧠 **CPU:** `%{cpu}` | **RAM:** `%{ram}`\n"
-        "━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🕹️ *Sistem aktif ve yayın için hazır.*"
-    )
-
-    await m.edit(
-        stats_msg,
-        reply_markup=InlineKeyboardMarkup(
-            [[InlineKeyboardButton("🗑️ Paneli Kapat", callback_data="close_stats")]]
-        ),
-    )
-
-
-# ────────────────────────────────────────────────
-# SADECE YÖNETİCİLERE (SUDO) ÖZEL BİLGİ KOMUTU (/bilgi)
-# ────────────────────────────────────────────────
-@Client.on_message(filters.command("bilgi"))
-async def bot_info(client, message):
-    if not await is_sudo(message.from_user.id):
-        return await message.reply("⛔ **Yalnızca SUDO kullanıcıları erişebilir.**")
-
-    uptime_sec = int(time.time() - START_TIME)
-    m, s = divmod(uptime_sec, 60)
+def get_readable_time(seconds: int) -> str:
+    m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
     d, h = divmod(h, 24)
-    uptime = f"{d} gün, {h} saat, {m} dk" if d > 0 else f"{h} saat, {m} dakika, {s} saniye"
-    start_date = time.strftime("%d.%m.%Y %H:%M:%S", time.localtime(START_TIME))
+    if d > 0: return f"{d} gün, {h} saat, {m} dakika"
+    elif h > 0: return f"{h} saat, {m} dakika"
+    elif m > 0: return f"{m} dakika, {s} saniye"
+    return f"{s} saniye"
 
-    ping_start = time.time()
+# --- /DURUM KOMUTU (Müzik Sistemi) ---
+@Client.on_message(filters.command(["durum", "stats"]))
+async def status_cmd(client, message: Message):
+    msg = await message.reply("📊 Durum kontrol ediliyor...")
     try:
-        sc = requests.get("https://soundcloud.com", timeout=5)
-        sc_stat = "🟢 Aktif" if sc.status_code == 200 else "🟡 Yavaş"
+        r = requests.get("https://www.youtube.com", timeout=3)
+        yt_status = "✅ Aktif (Bağlı)" if r.status_code == 200 else f"⚠️ Yavaş (HTTP {r.status_code})"
     except:
-        sc_stat = "🔴 Kapalı"
-
-    ping = round((time.time() - ping_start) * 1000)
-    users = len(await get_served_users())
-    chats = len(await get_served_chats())
-    cpu = psutil.cpu_percent()
-    ram = psutil.virtual_memory().percent
-
-    panel = (
-        "╔════════════════════════╗\n"
-        "   🎧 𝙋𝙄 𝙈𝙐𝙕𝙄𝙆 𝘽𝙊𝙏   \n"
-        "╚════════════════════════╝\n\n"
-        f"🗓️ **Başlangıç:** `{start_date}`\n"
-        f"⏱ **Uptime:** `{uptime}`\n"
-        f"📡 **Ping:** `{ping} ms`\n"
-        f"🧠 **CPU:** %{cpu} | **RAM:** %{ram}\n"
-        f"🎵 **SoundCloud:** {sc_stat}\n"
-        f"🗄️ **PostgreSQL:** `OK`\n"
-        f"👤 **Kullanıcılar:** `{users}`\n"
-        f"💬 **Gruplar:** `{chats}`\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"👨‍💻 **Geliştirici:** `@dnztrmnn`\n"
+        yt_status = "❌ Bağlantı Hatası"
+        
+    queue_count = sum(len(q) for q in player.music_queue.values())
+    active_chats = len(player.music_queue)
+        
+    text = (
+        "📊 **Sistem Durumu:**\n\n"
+        "🤖 **Bot:** Çevrimiçi\n"
+        "👤 **Asistan:** Aktif\n"
+        f"🎥 **YouTube:** {yt_status}\n\n"
+        f"🎧 **Aktif Sesli Sohbet:** {active_chats}\n"
+        f"🎶 **Kuyruktaki Toplam Şarkı:** {queue_count}"
     )
+    await msg.edit(text)
 
-    try:
-        await client.send_message(config.STATS_CHANNEL_ID, panel)
-        await message.reply("✅ **Durum raporu log kanalına gönderildi.**")
-    except Exception as e:
-        await message.reply(f"⚠️ **Log kanalına gönderilemedi!** (Bot kanalda yönetici mi?)\n\n🔎 *Hata:* `{e}`")
+# --- /BİLGİ KOMUTU (Sunucu Sistemi) ---
+@Client.on_message(filters.command(["bilgi", "info"]))
+async def info_cmd(client, message: Message):
+    uptime_sec = int(time.time() - START_TIME)
+    uptime_str = get_readable_time(uptime_sec)
+    
+    cpu_usage = psutil.cpu_percent(interval=0.5)
+    ram = psutil.virtual_memory()
+    ram_usage = f"{ram.used / (1024**3):.2f} GB / {ram.total / (1024**3):.2f} GB ({ram.percent}%)"
+    
+    text = (
+        "ℹ️ **Sistem ve Sunucu Bilgileri:**\n\n"
+        f"⏱ **Çalışma Süresi (Uptime):** {uptime_str}\n"
+        f"💻 **CPU Kullanımı:** %{cpu_usage}\n"
+        f"💾 **RAM Kullanımı:** {ram_usage}\n"
+        f"🌐 **Altyapı:** Pyrogram & PyTgCalls"
+    )
+    await message.reply(text)
