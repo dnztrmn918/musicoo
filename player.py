@@ -24,10 +24,13 @@ def format_playing_message(song_info, requested_by):
         f"⚡️ *Keyifli Dinlemeler!*"
     )
 
-# 🧹 ÇÖPÇÜ FONKSİYONU: Biten veya silinen şarkıları diskten temizler
+# 🧹 ÇÖPÇÜ FONKSİYONU: Artık sadece Telegram'dan indirilen dosyalar için çalışır
 def safe_delete(file_path):
+    # Eğer gelen yol bir link ise (http ile başlıyorsa) silme işlemi yapma
+    if not file_path or str(file_path).startswith("http"):
+        return
     try:
-        if file_path and os.path.exists(file_path):
+        if os.path.exists(file_path):
             os.remove(file_path)
     except:
         pass
@@ -38,7 +41,8 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
         music_queue[chat_id] = []
 
     if len(music_queue[chat_id]) >= 5:
-        safe_delete(song_info.get("file_path")) # Kuyruk doluysa indirilen dosyayı sil
+        # Kuyruk doluysa ve bir dosya yolu varsa sil
+        safe_delete(song_info.get("file_path")) 
         return "FULL"
 
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
@@ -47,7 +51,8 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
         try:
             if userbot:
                 await userbot.get_chat(chat_id) 
-            # LOKAL DOSYAYI ÇALIYORUZ
+            
+            # KRİTİK DEĞİŞİKLİK: file_path artık YouTube akış URL'si (raw url)
             await call.join_group_call(chat_id, AudioPiped(song_info["file_path"]))
             return "PLAYING"
         except Exception as e:
@@ -60,11 +65,13 @@ async def stream_end_handler(chat_id):
     if chat_id in music_queue:
         if len(music_queue[chat_id]) > 0:
             finished_song = music_queue[chat_id].pop(0)
-            safe_delete(finished_song["info"].get("file_path")) # Şarkı bitince sil
+            # Şarkı bitince eğer yerel bir dosyaysa temizle
+            safe_delete(finished_song["info"].get("file_path")) 
 
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
+                # Sıradaki şarkıyı (link veya dosya) AudioPiped ile başlat
                 await call.change_stream(chat_id, AudioPiped(next_song["info"]["file_path"]))
                 return next_song
             except Exception:
@@ -78,7 +85,6 @@ async def stream_end_handler(chat_id):
             return "EMPTY"
     return None
 
-# Kuyruk temizleme işlemleri (play.py üzerinden çağrılacak)
 def clear_entire_queue(chat_id):
     if chat_id in music_queue:
         for song in music_queue[chat_id]:
@@ -92,9 +98,4 @@ def clear_queue_except_current(chat_id):
             safe_delete(song["info"].get("file_path"))
         music_queue[chat_id] = [current]
 
-def remove_song_from_queue(chat_id, index):
-    if chat_id in music_queue and 0 <= index < len(music_queue[chat_id]):
-        removed = music_queue[chat_id].pop(index)
-        safe_delete(removed["info"].get("file_path"))
-        return removed
-    return None
+def remove_song_from_queue(
