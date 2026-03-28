@@ -2,6 +2,7 @@ import yt_dlp
 import requests
 import config
 import random
+import os
 
 def search_youtube(query):
     # 1. ADIM: API KEY HAVUZUNU HAZIRLA
@@ -11,7 +12,7 @@ def search_youtube(query):
 
     api_key = random.choice(keys)
 
-    # 2. ADIM: YOUTUBE DATA API V3 İLE ARAMA YAP
+    # 2. ADIM: YOUTUBE DATA API V3 İLE ARAMA YAP (Hızlı Arama)
     search_url = "https://www.googleapis.com/youtube/v3/search"
     params = {
         'part': 'snippet',
@@ -36,7 +37,7 @@ def search_youtube(query):
     thumbnails = data['items'][0]['snippet'].get('thumbnails', {})
     thumb = thumbnails.get('high', thumbnails.get('default', {})).get('url', "https://telegra.ph/file/69204068595f57731936c.jpg")
 
-    # 3. ADIM: YT-DLP İLE SES AKIŞ LİNKİNİ AL
+    # 3. ADIM: YT-DLP İLE SES AKIŞ LİNKİNİ AL (Çerezli)
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
@@ -44,10 +45,12 @@ def search_youtube(query):
         'nocheckcertificate': True,
         'source_address': '0.0.0.0',
         'geo_bypass': True,
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        # KRİTİK: Çerez dosyası varsa kullan
+        'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'ios', 'youtube_music', 'mweb'],
+                'player_client': ['android', 'ios', 'tv', 'youtube_music'],
                 'player_skip': ['webpage', 'configs'],
                 'skip': ['dash', 'hls']
             }
@@ -65,5 +68,6 @@ def search_youtube(query):
                 'webpage_url': video_url
             }
     except Exception as e:
-        # Hata durumunda net mesaj döndür
-        raise Exception(f"YouTube Akış Hatası: {str(e)}")
+        # Hata devam ederse çerez dosyasının varlığını da belirterek hata dön
+        cookie_status = " (cookies.txt bulundu)" if os.path.exists('cookies.txt') else " (cookies.txt bulunamadı!)"
+        raise Exception(f"YouTube Akış Hatası: {str(e)}{cookie_status}")
