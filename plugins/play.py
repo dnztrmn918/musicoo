@@ -32,7 +32,7 @@ async def play_command(client, message):
     try:
         # EĞER TELEGRAM SES DOSYASIYSA:
         if is_audio_reply:
-            await m.edit("📥 **Telegram ses dosyası indiriliyor...** ⏳")
+            await m.edit("📥 📡 **YouTube üzerinden aranıyor...** ⏳")
             audio_msg = message.reply_to_message
             audio = audio_msg.audio or audio_msg.voice
             
