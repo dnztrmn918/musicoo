@@ -1,6 +1,8 @@
 import asyncio
 import os
-from pytgcalls.types import AudioPiped
+# v0.9.7 için doğru içe aktarmalar eklendi
+from pytgcalls import StreamType
+from pytgcalls.types.input_stream import AudioPiped
 
 music_queue = {}
 call = None
@@ -51,7 +53,12 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
                 try: await userbot.get_chat(chat_id)
                 except: pass
             
-            await call.join_group_call(chat_id, AudioPiped(song_info["file_path"]))
+            # KRİTİK DÜZELTME: v0.9.7 motoru için stream_type eklendi
+            await call.join_group_call(
+                chat_id, 
+                AudioPiped(song_info["file_path"]),
+                stream_type=StreamType().pulse_stream
+            )
             return "PLAYING"
         except Exception as e:
             if music_queue[chat_id]:
@@ -69,7 +76,11 @@ async def stream_end_handler(chat_id):
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
-                await call.change_stream(chat_id, AudioPiped(next_song["info"]["file_path"]))
+                # KRİTİK DÜZELTME: v0.9.7 uyumlu şarkı atlama komutu
+                await call.change_stream(
+                    chat_id, 
+                    AudioPiped(next_song["info"]["file_path"])
+                )
                 return next_song
             except Exception:
                 return await stream_end_handler(chat_id)
