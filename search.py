@@ -37,7 +37,7 @@ def search_youtube(query):
     thumbnails = data['items'][0]['snippet'].get('thumbnails', {})
     thumb = thumbnails.get('high', thumbnails.get('default', {})).get('url', "https://telegra.ph/file/69204068595f57731936c.jpg")
 
-    # 3. YT-DLP: ÇEREZ VE ANDROID İSTEMCİSİ
+    # 3. YT-DLP: GÜNCEL VE ÇEREZ DESTEKLİ AYARLAR
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
@@ -46,18 +46,20 @@ def search_youtube(query):
         'source_address': '0.0.0.0',
         'geo_bypass': True,
         'cachedir': False, 
-        # KRİTİK EKLENTİ: Koyeb'de cookies.txt varsa YouTube'a sun!
+        # Taze cookies.txt dosyasını burada devreye sokuyoruz
         'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'ios'],
-                'player_skip': ['webpage', 'configs', 'js']
+                # Farklı cihaz taklitleriyle YouTube kalkanlarını aşıyoruz
+                'player_client': ['android', 'web', 'ios'],
+                'player_skip': ['configs', 'js']
             }
         }
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # download=False diyerek sadece linki çekiyoruz
             info = ydl.extract_info(video_url, download=False)
             
             raw_url = info.get('url') or (info.get('requested_formats') and info['requested_formats'][0].get('url'))
