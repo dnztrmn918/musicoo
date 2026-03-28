@@ -25,7 +25,6 @@ def format_playing_message(song_info, requested_by):
     )
 
 def safe_delete(file_path):
-    """Linkleri silmeye çalışıp hata vermesini engeller."""
     if not file_path or str(file_path).startswith("http"):
         return
     try:
@@ -39,7 +38,8 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     if chat_id not in music_queue:
         music_queue[chat_id] = []
 
-    if len(music_queue[chat_id]) >= 5:
+    # 1 Çalan + 5 Kuyruk = Toplam 6 sınır
+    if len(music_queue[chat_id]) >= 6:
         safe_delete(song_info.get("file_path"))
         return "FULL"
 
@@ -47,12 +47,10 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
-            # Asistanın grupta olduğunu kontrol et
             if userbot:
                 try: await userbot.get_chat(chat_id)
                 except: pass
             
-            # YouTube akışını başlat
             await call.join_group_call(chat_id, AudioPiped(song_info["file_path"]))
             return "PLAYING"
         except Exception as e:
