@@ -38,3 +38,6 @@ if SUDO_OWNER_ID and SUDO_OWNER_ID not in SUDO_USERS:
 DEVELOPER_LINK = "[t.me](https://t.me/dnztrmnn)"
 CHANNEL_LINK = "[t.me](https://t.me/NowaDestek)"
 LOGO_PATH = os.path.join(os.getcwd(), "plugins", "logo.jpg")
+
+#YOUTUBE API BAĞLANTISI
+YOUTUBE_API_KEY = os.getenv("API1", "") # Test için şimdilik API1'i çekiyoruz
