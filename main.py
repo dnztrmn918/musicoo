@@ -1,10 +1,36 @@
 import asyncio
 import time
 import sys
+import threading
+import os
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
 import config
 from database import init_db, add_sudo_user
+
+# ─── KOYEB KANDIRMA SERVİSİ (SAHTE WEB SUNUCUSU) ───
+class DummyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b"Bot sapasaglam ayakta!")
+
+def run_dummy_server():
+    try:
+        # Koyeb genellikle PORT değişkenini atar, yoksa 8080 kullanırız
+        port = int(os.environ.get("PORT", 8080))
+        server_address = ('0.0.0.0', port)
+        httpd = HTTPServer(server_address, DummyHandler)
+        print(f"🌐 Sahte web sunucusu {port} portunda başlatıldı...")
+        httpd.serve_forever()
+    except Exception as e:
+        print(f"⚠️ Web server hatası: {e}")
+
+# Arka planda sunucuyu başlat (Botun çalışmasını engellemez)
+threading.Thread(target=run_dummy_server, daemon=True).start()
+# ───────────────────────────────────────────────────
 
 START_TIME = time.time()
 
