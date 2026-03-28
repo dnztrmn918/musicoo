@@ -1,6 +1,9 @@
 import time
 import psutil
 import requests
+from datetime import datetime
+import pyrogram
+import pytgcalls
 from pyrogram import Client, filters
 from pyrogram.types import Message
 import player
@@ -34,25 +37,36 @@ async def status_cmd(client, message: Message):
         "👤 **Asistan:** Aktif\n"
         f"🎥 **YouTube:** {yt_status}\n\n"
         f"🎧 **Aktif Sesli Sohbet:** {active_chats}\n"
-        f"🎶 **Kuyruktaki Toplam Şarkı:** {queue_count}"
+        f"🎶 **Kuyruktaki Toplam Şarkı:** {queue_count}\n\n"
+        "👨‍💻 **Geliştirici:** [dnztrmnn](https://t.me/dnztrmnn)"
     )
-    await msg.edit(text)
+    await msg.edit(text, disable_web_page_preview=True)
 
 # --- /BİLGİ KOMUTU (Sunucu Sistemi) ---
 @Client.on_message(filters.command(["bilgi", "info"]))
 async def info_cmd(client, message: Message):
+    # Çalışma süresi ve başlangıç tarihini hesaplama
     uptime_sec = int(time.time() - START_TIME)
     uptime_str = get_readable_time(uptime_sec)
+    start_date = datetime.fromtimestamp(START_TIME).strftime('%d.%m.%Y %H:%M:%S')
     
+    # Sunucu durumları
     cpu_usage = psutil.cpu_percent(interval=0.5)
     ram = psutil.virtual_memory()
     ram_usage = f"{ram.used / (1024**3):.2f} GB / {ram.total / (1024**3):.2f} GB ({ram.percent}%)"
     
     text = (
         "ℹ️ **Sistem ve Sunucu Bilgileri:**\n\n"
-        f"⏱ **Çalışma Süresi (Uptime):** {uptime_str}\n"
-        f"💻 **CPU Kullanımı:** %{cpu_usage}\n"
-        f"💾 **RAM Kullanımı:** {ram_usage}\n"
-        f"🌐 **Altyapı:** Pyrogram & PyTgCalls"
+        f"📅 **Açılış Tarihi:** `{start_date}`\n"
+        f"⏱ **Çalışma Süresi:** `{uptime_str}`\n"
+        f"💻 **CPU Kullanımı:** `% {cpu_usage}`\n"
+        f"💾 **RAM Kullanımı:** `{ram_usage}`\n\n"
+        "⚙️ **Teknik Altyapı:**\n"
+        f" └ 📦 **Pyrogram:** `v{pyrogram.__version__}`\n"
+        f" └ 📞 **PyTgCalls:** `v{pytgcalls.__version__}`\n"
+        f" └ 🎥 **YouTube Servisi:** `Aktif`\n"
+        f" └ 🔗 **Asistan Durumu:** `Bağlı`\n\n"
+        "👨‍💻 **Geliştirici:** [dnztrmnn](https://t.me/dnztrmnn)"
     )
-    await message.reply(text)
+    
+    await message.reply(text, disable_web_page_preview=True)
