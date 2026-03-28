@@ -1,11 +1,25 @@
 import asyncio
+import time
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from pytgcalls.types.stream import StreamAudioEnded
 from database import add_served_chat
 import player
 
-# --- ŞARKI BİTİŞ OLAYI ---
+# Sesli sohbet başlangıç zamanlarını tutacağımız sözlük
+active_voice_chats = {}
+
+def get_readable_time(seconds: int) -> str:
+    m, s = divmod(seconds, 60)
+    h, m = divmod(m, 60)
+    if h > 0:
+        return f"{h} saat, {m} dakika, {s} saniye"
+    elif m > 0:
+        return f"{m} dakika, {s} saniye"
+    return f"{s} saniye"
+
+# --- ŞARKI BİTİŞ OLAYI VE OTOMATİK ÇIKIŞ ---
+@player.call.on_stream_end()
 async def on_stream_end_handler(client, update):
     if isinstance(update, StreamAudioEnded):
         chat_id = update.chat_id
@@ -13,7 +27,7 @@ async def on_stream_end_handler(client, update):
         
         from main import bot
         if result == "EMPTY":
-            await bot.send_message(chat_id, "ℹ️ **Kuyruk bitti, yayın sonlandırıldı.** 👋")
+            await bot.send_message(chat_id, "🛑 **Kuyruk bitti, asistan sesten ayrıldı.** 👋")
         elif result:
             thumb = result["info"].get("thumbnail") or "https://telegra.ph/file/69204068595f57731936c.jpg"
             await bot.send_photo(
@@ -37,12 +51,13 @@ async def welcome_bot(client, message: Message):
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📢 Kanal", url="https://t.me/NowaDestek")]])
             )
 
-# --- SESLİ SOHBET BAŞLATILDIĞINDA ---
+# --- SESLİ SOHBET BAŞLATILDIĞINDA (KRONOMETRE BAŞLAR) ---
 @Client.on_message(filters.video_chat_started)
 async def video_chat_started(client, message: Message):
+    active_voice_chats[message.chat.id] = time.time()
     await message.reply_text("🔔 **Sesli Sohbet Başlatıldı!**\nMüzik açmak için `/play` yazabilirsiniz. 🎧")
 
-# --- RELOAD KOMUTU (SİSTEM YENİLEME) ---
+# --- RELOAD KOMUTU ---
 @Client.on_message(filters.command(["reload", "güncelle", "yenile"]))
 async def reload_system(client, message):
     m = await message.reply_text("⚙️ **Veriler senkronize ediliyor...**")
@@ -54,9 +69,18 @@ async def reload_system(client, message):
     except Exception as e:
         await m.edit(f"❌ **Hata:** `{e}`")
 
-# --- SESLİ SOHBET BİTTİĞİNDE TEMİZLİK ---
+# --- SESLİ SOHBET BİTTİĞİNDE (SÜRE HESAPLAMA VE ÇIKIŞ) ---
 @Client.on_message(filters.video_chat_ended)
 async def video_chat_ended(client, message: Message):
-    player.music_queue.pop(message.chat.id, None)
+    player.clear_entire_queue(message.chat.id)
     try: await player.call.leave_group_call(message.chat.id)
     except: pass
+    
+    # Kronometreyi durdurup hesaplıyoruz
+    start_time = active_voice_chats.pop(message.chat.id, None)
+    duration_text = ""
+    if start_time:
+        duration_sec = int(time.time() - start_time)
+        duration_text = f"\n⏱ **Aktiflik Süresi:** {get_readable_time(duration_sec)}"
+        
+    await message.reply_text(f"🔇 **Sesli sohbet sonlandırıldı.**{duration_text}")
