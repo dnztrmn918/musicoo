@@ -6,20 +6,16 @@ from pytgcalls.types.stream import StreamAudioEnded
 from database import add_served_chat
 import player
 
-# Sesli sohbet başlangıç zamanlarını tutacağımız sözlük
 active_voice_chats = {}
 
 def get_readable_time(seconds: int) -> str:
     m, s = divmod(seconds, 60)
     h, m = divmod(m, 60)
-    if h > 0:
-        return f"{h} saat, {m} dakika, {s} saniye"
-    elif m > 0:
-        return f"{m} dakika, {s} saniye"
+    if h > 0: return f"{h} saat, {m} dakika, {s} saniye"
+    elif m > 0: return f"{m} dakika, {s} saniye"
     return f"{s} saniye"
 
-# --- ŞARKI BİTİŞ OLAYI VE OTOMATİK ÇIKIŞ ---
-@player.call.on_stream_end()
+# --- ŞARKI BİTİŞ OLAYI (DECORATOR KALDIRILDI - ÇAKIŞMA ÖNLENDİ) ---
 async def on_stream_end_handler(client, update):
     if isinstance(update, StreamAudioEnded):
         chat_id = update.chat_id
@@ -51,7 +47,7 @@ async def welcome_bot(client, message: Message):
                 reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📢 Kanal", url="https://t.me/NowaDestek")]])
             )
 
-# --- SESLİ SOHBET BAŞLATILDIĞINDA (KRONOMETRE BAŞLAR) ---
+# --- SESLİ SOHBET BAŞLATILDIĞINDA ---
 @Client.on_message(filters.video_chat_started)
 async def video_chat_started(client, message: Message):
     active_voice_chats[message.chat.id] = time.time()
@@ -69,14 +65,13 @@ async def reload_system(client, message):
     except Exception as e:
         await m.edit(f"❌ **Hata:** `{e}`")
 
-# --- SESLİ SOHBET BİTTİĞİNDE (SÜRE HESAPLAMA VE ÇIKIŞ) ---
+# --- SESLİ SOHBET BİTTİĞİNDE ---
 @Client.on_message(filters.video_chat_ended)
 async def video_chat_ended(client, message: Message):
     player.clear_entire_queue(message.chat.id)
     try: await player.call.leave_group_call(message.chat.id)
     except: pass
     
-    # Kronometreyi durdurup hesaplıyoruz
     start_time = active_voice_chats.pop(message.chat.id, None)
     duration_text = ""
     if start_time:
