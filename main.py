@@ -8,17 +8,17 @@ from database import init_db, add_sudo_user
 
 START_TIME = time.time()
 
+# 🛡️ GÜVENLİK KONTROLÜ
 if not config.SESSION:
     print("❌ KRİTİK HATA: SESSION değişkeni boş!")
     sys.exit(1)
 
-# plugins root tanımlamasını koruduk
 bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot_token=config.BOT_TOKEN, plugins=dict(root="plugins"))
 userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION, in_memory=True)
 
 call = PyTgCalls(userbot)
 
-# Player entegrasyonu
+# Bot ve Asistanı player dosyasına gönderiyoruz
 import player
 player.call = call
 player.userbot = userbot
@@ -27,11 +27,11 @@ player.bot = bot
 @call.on_stream_end()
 async def stream_end(client, update):
     from plugins.events import on_stream_end_handler
-    # Bağlantı kopmalarına karşı güvenli çalıştırma
+    # Olası hatalarda botun tamamen kapanmasını önlemek için try-except
     try:
         await on_stream_end_handler(client, update)
     except Exception as e:
-        print(f"❌ Stream End Error: {e}")
+        print(f"⚠️ Stream End Error: {e}")
 
 async def main():
     print("🚀 Sistem Ayağa Kaldırılıyor...")
@@ -44,22 +44,29 @@ async def main():
     print("👤 Asistan motoru ateşleniyor...")
     try:
         await userbot.start()
+        # KRİTİK EKSİK: Asistanın sisteme oturması için 5 saniye bekleme süresi
+        await asyncio.sleep(5) 
     except Exception as e:
         print(f"❌ ASİSTAN BAŞLATILAMADI: {e}")
         sys.exit(1)
 
     print("📞 Ses Motoru başlatılıyor...")
+    # Pytgcalls başlatılırken hata payını minimize ediyoruz
     await call.start()
-    
-    # KRİTİK: Sistemin oturması için kısa bir es (ConnectionError çözümü)
-    await asyncio.sleep(2)
 
     print("✅ Bot ve Asistan başarıyla aktif edildi!")
     await idle()
     
-    await bot.stop()
-    await userbot.stop()
+    # Kapanışta temizlik
+    try:
+        await bot.stop()
+        await userbot.stop()
+    except:
+        pass
 
 if __name__ == "__main__":
-    # Döngü yönetimini daha stabil hale getirdik
-    asyncio.get_event_loop().run_until_complete(main())
+    # Döngüyü daha güvenli bir şekilde çalıştırıyoruz
+    try:
+        asyncio.get_event_loop().run_until_complete(main())
+    except KeyboardInterrupt:
+        pass
