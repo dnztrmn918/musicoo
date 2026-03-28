@@ -24,9 +24,8 @@ def format_playing_message(song_info, requested_by):
         f"⚡️ *Keyifli Dinlemeler!*"
     )
 
-# 🧹 ÇÖPÇÜ FONKSİYONU: Artık sadece Telegram'dan indirilen dosyalar için çalışır
 def safe_delete(file_path):
-    # Eğer gelen yol bir link ise (http ile başlıyorsa) silme işlemi yapma
+    """Linkleri silmeye çalışıp hata vermesini engeller."""
     if not file_path or str(file_path).startswith("http"):
         return
     try:
@@ -41,23 +40,25 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
         music_queue[chat_id] = []
 
     if len(music_queue[chat_id]) >= 5:
-        # Kuyruk doluysa ve bir dosya yolu varsa sil
-        safe_delete(song_info.get("file_path")) 
+        safe_delete(song_info.get("file_path"))
         return "FULL"
 
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
 
     if len(music_queue[chat_id]) == 1:
         try:
+            # Asistanın grupta olduğunu kontrol et
             if userbot:
-                await userbot.get_chat(chat_id) 
+                try: await userbot.get_chat(chat_id)
+                except: pass
             
-            # KRİTİK DEĞİŞİKLİK: file_path artık YouTube akış URL'si (raw url)
+            # YouTube akışını başlat
             await call.join_group_call(chat_id, AudioPiped(song_info["file_path"]))
             return "PLAYING"
         except Exception as e:
-            failed_song = music_queue[chat_id].pop(0)
-            safe_delete(failed_song["info"].get("file_path"))
+            if music_queue[chat_id]:
+                failed_song = music_queue[chat_id].pop(0)
+                safe_delete(failed_song["info"].get("file_path"))
             return f"ERROR_DETAIL: {str(e)}"
     return "QUEUED"
 
@@ -65,23 +66,19 @@ async def stream_end_handler(chat_id):
     if chat_id in music_queue:
         if len(music_queue[chat_id]) > 0:
             finished_song = music_queue[chat_id].pop(0)
-            # Şarkı bitince eğer yerel bir dosyaysa temizle
-            safe_delete(finished_song["info"].get("file_path")) 
+            safe_delete(finished_song["info"].get("file_path"))
 
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
-                # Sıradaki şarkıyı (link veya dosya) AudioPiped ile başlat
                 await call.change_stream(chat_id, AudioPiped(next_song["info"]["file_path"]))
                 return next_song
             except Exception:
                 return await stream_end_handler(chat_id)
         else:
             music_queue.pop(chat_id, None)
-            try:
-                await call.leave_group_call(chat_id)
-            except:
-                pass
+            try: await call.leave_group_call(chat_id)
+            except: pass
             return "EMPTY"
     return None
 
@@ -98,4 +95,9 @@ def clear_queue_except_current(chat_id):
             safe_delete(song["info"].get("file_path"))
         music_queue[chat_id] = [current]
 
-def remove_song_from_queue(
+def remove_song_from_queue(chat_id, index):
+    if chat_id in music_queue and 0 <= index < len(music_queue[chat_id]):
+        removed = music_queue[chat_id].pop(index)
+        safe_delete(removed["info"].get("file_path"))
+        return removed
+    return None
