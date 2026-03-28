@@ -36,7 +36,7 @@ def search_youtube(query):
     thumbnails = data['items'][0]['snippet'].get('thumbnails', {})
     thumb = thumbnails.get('high', thumbnails.get('default', {})).get('url', "https://telegra.ph/file/69204068595f57731936c.jpg")
 
-    # 3. YT-DLP: SAF ANDROID İSTEMCİSİ (ÇEREZSİZ VE JS KORUMASIZ)
+    # 3. YT-DLP: SAF ANDROID İSTEMCİSİ VE SIFIR ÖNBELLEK
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
@@ -44,10 +44,12 @@ def search_youtube(query):
         'nocheckcertificate': True,
         'source_address': '0.0.0.0',
         'geo_bypass': True,
-        # KRİTİK DEĞİŞİKLİK: Sadece Android istemcisini zorlayıp, web kontrollerini (js, webpage) atlıyoruz.
+        # KRİTİK 1: Önbelleği kapatıyoruz! Her şarkıda yeni kimlik alacak.
+        'cachedir': False, 
+        # KRİTİK 2: Çerez yok, sadece Android cihaz taklidi var. JS kontrolleri kapalı.
         'extractor_args': {
             'youtube': {
-                'player_client': ['android'],
+                'player_client': ['android', 'ios'],
                 'player_skip': ['webpage', 'configs', 'js']
             }
         }
@@ -61,7 +63,7 @@ def search_youtube(query):
             raw_url = info.get('url') or (info.get('requested_formats') and info['requested_formats'][0].get('url'))
             
             if not raw_url:
-                raise Exception("Ses linki çıkartılamadı.")
+                raise Exception("Ses linki çıkartılamadı, format desteklenmiyor olabilir.")
                 
             return {
                 'title': title,
@@ -70,4 +72,5 @@ def search_youtube(query):
                 'webpage_url': video_url
             }
     except Exception as e:
+        # Hata mesajında artık cookies.txt aramayacak
         raise Exception(f"YouTube Akış Hatası: {str(e)}")
