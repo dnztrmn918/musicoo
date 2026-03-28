@@ -12,7 +12,7 @@ def search_youtube(query):
 
     api_key = random.choice(keys)
 
-    # 2. ADIM: YOUTUBE DATA API V3 İLE ARAMA YAP (Hızlı Arama)
+    # 2. ADIM: YOUTUBE DATA API V3 İLE ARAMA YAP
     search_url = "https://www.googleapis.com/youtube/v3/search"
     params = {
         'part': 'snippet',
@@ -37,8 +37,9 @@ def search_youtube(query):
     thumbnails = data['items'][0]['snippet'].get('thumbnails', {})
     thumb = thumbnails.get('high', thumbnails.get('default', {})).get('url', "https://telegra.ph/file/69204068595f57731936c.jpg")
 
-    # 3. ADIM: YT-DLP İLE SES AKIŞ LİNKİNİ AL (Çerezli)
+    # 3. ADIM: YT-DLP İLE SES AKIŞ LİNKİNİ AL
     ydl_opts = {
+        # FORMAT FİX: Sadece ses (bestaudio) bulamazsa en iyi alternatife geçmesini sağlar
         'format': 'bestaudio/best',
         'quiet': True,
         'no_warnings': True,
@@ -46,11 +47,12 @@ def search_youtube(query):
         'source_address': '0.0.0.0',
         'geo_bypass': True,
         'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        # KRİTİK: Çerez dosyası varsa kullan
+        # KRİTİK: Çerez dosyası kontrolü
         'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'ios', 'tv', 'youtube_music'],
+                # YouTube Music ve mweb ekleyerek uyumluluğu artırdık
+                'player_client': ['android', 'ios', 'youtube_music', 'mweb'],
                 'player_skip': ['webpage', 'configs'],
                 'skip': ['dash', 'hls']
             }
@@ -59,15 +61,6 @@ def search_youtube(query):
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # download=False: Sadece akış linkini alır
             info = ydl.extract_info(video_url, download=False)
-            raw_url = info['url']
-            return {
-                'title': title,
-                'thumbnail': thumb,
-                'file_path': raw_url,
-                'webpage_url': video_url
-            }
-    except Exception as e:
-        # Hata devam ederse çerez dosyasının varlığını da belirterek hata dön
-        cookie_status = " (cookies.txt bulundu)" if os.path.exists('cookies.txt') else " (cookies.txt bulunamadı!)"
-        raise Exception(f"YouTube Akış Hatası: {str(e)}{cookie_status}")
+            raw_url = info
