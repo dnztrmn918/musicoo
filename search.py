@@ -2,6 +2,7 @@ import yt_dlp
 import requests
 import config
 import random
+import os
 
 def search_youtube(query):
     # 1. API KEY HAVUZU
@@ -36,7 +37,7 @@ def search_youtube(query):
     thumbnails = data['items'][0]['snippet'].get('thumbnails', {})
     thumb = thumbnails.get('high', thumbnails.get('default', {})).get('url', "https://telegra.ph/file/69204068595f57731936c.jpg")
 
-    # 3. YT-DLP: SAF ANDROID İSTEMCİSİ VE SIFIR ÖNBELLEK
+    # 3. YT-DLP: ÇEREZ VE ANDROID İSTEMCİSİ
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
@@ -44,9 +45,9 @@ def search_youtube(query):
         'nocheckcertificate': True,
         'source_address': '0.0.0.0',
         'geo_bypass': True,
-        # KRİTİK 1: Önbelleği kapatıyoruz! Her şarkıda yeni kimlik alacak.
         'cachedir': False, 
-        # KRİTİK 2: Çerez yok, sadece Android cihaz taklidi var. JS kontrolleri kapalı.
+        # KRİTİK EKLENTİ: Koyeb'de cookies.txt varsa YouTube'a sun!
+        'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
         'extractor_args': {
             'youtube': {
                 'player_client': ['android', 'ios'],
@@ -59,7 +60,6 @@ def search_youtube(query):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
             
-            # Linki güvenli şekilde çekiyoruz
             raw_url = info.get('url') or (info.get('requested_formats') and info['requested_formats'][0].get('url'))
             
             if not raw_url:
@@ -72,5 +72,4 @@ def search_youtube(query):
                 'webpage_url': video_url
             }
     except Exception as e:
-        # Hata mesajında artık cookies.txt aramayacak
         raise Exception(f"YouTube Akış Hatası: {str(e)}")
