@@ -1,7 +1,7 @@
 pyrogram
 py-tgcalls
 ntgcalls==1.0.1
-yt-dlp
+yt-dlp>=2025.01.15
 tgcrypto
 asyncpg
 psutil
