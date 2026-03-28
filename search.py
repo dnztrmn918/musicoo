@@ -2,17 +2,16 @@ import yt_dlp
 import requests
 import config
 import random
-import os
 
 def search_youtube(query):
-    # 1. ADIM: API KEY HAVUZUNU HAZIRLA
+    # 1. API KEY HAVUZU
     keys = [k.strip() for k in config.YOUTUBE_API_KEY.split(",") if k.strip()]
     if not keys:
-        raise Exception("❌ API anahtarı bulunamadı! Koyeb YT_KEYS ayarını kontrol et.")
+        raise Exception("❌ API anahtarı bulunamadı!")
 
     api_key = random.choice(keys)
 
-    # 2. ADIM: YOUTUBE DATA API V3 İLE ARAMA YAP
+    # 2. YOUTUBE DATA API V3 İLE ARAMA YAP
     search_url = "https://www.googleapis.com/youtube/v3/search"
     params = {
         'part': 'snippet',
@@ -37,20 +36,19 @@ def search_youtube(query):
     thumbnails = data['items'][0]['snippet'].get('thumbnails', {})
     thumb = thumbnails.get('high', thumbnails.get('default', {})).get('url', "https://telegra.ph/file/69204068595f57731936c.jpg")
 
-    # 3. ADIM: YT-DLP İLE SES AKIŞ LİNKİNİ AL (GERÇEK ÇÖZÜM)
+    # 3. YT-DLP: SAF ANDROID İSTEMCİSİ (ÇEREZSİZ VE JS KORUMASIZ)
     ydl_opts = {
-        'format': 'bestaudio/best', # Kendi doğal formatına döndürdük
+        'format': 'bestaudio/best',
         'quiet': True,
         'no_warnings': True,
         'nocheckcertificate': True,
         'source_address': '0.0.0.0',
         'geo_bypass': True,
-        'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
-        # KRİTİK DEĞİŞİKLİK: 'skip': ['dash', 'hls'] kısmı SİLİNDİ!
-        # Ses formatlarına erişebilmesi için sadece istemcileri çeşitlendirdik.
+        # KRİTİK DEĞİŞİKLİK: Sadece Android istemcisini zorlayıp, web kontrollerini (js, webpage) atlıyoruz.
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'ios', 'tv', 'web'] 
+                'player_client': ['android'],
+                'player_skip': ['webpage', 'configs', 'js']
             }
         }
     }
@@ -59,12 +57,11 @@ def search_youtube(query):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
             
-            # Bazen DASH akışlarında 'url' direkt info içinde gelmez, requested_formats içinde gelir.
-            # Bu güvenlik satırı, linkin %100 alınmasını sağlar.
+            # Linki güvenli şekilde çekiyoruz
             raw_url = info.get('url') or (info.get('requested_formats') and info['requested_formats'][0].get('url'))
             
             if not raw_url:
-                raise Exception("Ses linki çıkartılamadı, format desteklenmiyor olabilir.")
+                raise Exception("Ses linki çıkartılamadı.")
                 
             return {
                 'title': title,
@@ -73,5 +70,4 @@ def search_youtube(query):
                 'webpage_url': video_url
             }
     except Exception as e:
-        cookie_status = " (cookies.txt bulundu)" if os.path.exists('cookies.txt') else " (cookies.txt bulunamadı!)"
-        raise Exception(f"YouTube Akış Hatası: {str(e)}{cookie_status}")
+        raise Exception(f"YouTube Akış Hatası: {str(e)}")
