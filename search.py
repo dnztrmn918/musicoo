@@ -4,17 +4,18 @@ import config
 import random
 
 def search_youtube(query):
-    # 10 Key Havuzu Mantığı: config içindeki virgüllü string'i listeye çeviriyoruz
-    # Koyeb'de YT_KEYS olarak girdiğin tüm anahtarları deneyecektir.
+    # 1. ADIM: API KEY HAVUZUNU HAZIRLA
+    # Koyeb'deki YT_KEYS değişkeninden anahtarları virgülle ayırarak listeye çevirir.
     keys = [k.strip() for k in config.YOUTUBE_API_KEY.split(",") if k.strip()]
     
     if not keys:
         raise Exception("❌ API anahtarı bulunamadı! Koyeb YT_KEYS ayarını kontrol et.")
 
-    # Havuzdan rastgele bir key seçerek kotayı dağıtıyoruz
+    # Havuzdan rastgele bir anahtar seçerek günlük kotayı (10.000 unit) paylaştırır.
     api_key = random.choice(keys)
 
-    # 1. ADIM: YouTube API ile Arama Yap (Hızlı ve Kesin)
+    # 2. ADIM: YOUTUBE DATA API V3 İLE ARAMA YAP
+    # Bu aşama çerez gerektirmez ve çok hızlı sonuç döndürür.
     search_url = "https://www.googleapis.com/youtube/v3/search"
     params = {
         'part': 'snippet',
@@ -26,44 +27,52 @@ def search_youtube(query):
     
     response = requests.get(search_url, params=params)
     if response.status_code != 200:
-        # Eğer bu key patlamışsa veya hata vermişse bilgi ver
-        raise Exception(f"YouTube API Hatası ({response.status_code}): Lütfen API keylerinizi kontrol edin.")
+        raise Exception(f"YouTube API Hatası ({response.status_code}): Anahtarlarınızı veya kotanızı kontrol edin.")
     
     data = response.json()
     if not data.get('items'):
-        raise Exception("🔍 Aranan parça bulunamadı.")
+        raise Exception("🔍 Aranan parça YouTube üzerinde bulunamadı.")
     
     video_id = data['items'][0]['id']['videoId']
     video_url = f"https://www.youtube.com/watch?v={video_id}"
     title = data['items'][0]['snippet']['title']
     
-    # Thumbnail güvenliği
+    # Kapak fotoğrafı güvenliği (High yoksa default al)
     thumbnails = data['items'][0]['snippet'].get('thumbnails', {})
     thumb = thumbnails.get('high', thumbnails.get('default', {})).get('url', "https://telegra.ph/file/69204068595f57731936c.jpg")
 
-    # 2. ADIM: yt-dlp ile Ses Akış Linkini (Direct Link) Al
-    # YouTube'un "Bot musun?" engelini (Sign in hatası) aşmak için ayarlar eklendi.
+    # 3. ADIM: YT-DLP İLE SES AKIŞ LİNKİNİ AL
+    # "Sign in to confirm you're not a bot" hatasını aşmak için mobil istemci zorlaması ekledik.
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
         'no_warnings': True,
         'nocheckcertificate': True,
-        # KRİTİK AYARLAR: YouTube engelini aşmak için tarayıcı gibi davranıyoruz
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+        'source_address': '0.0.0.0', # IPv4 zorlaması
         'geo_bypass': True,
+        # YouTube engelini aşmak için tarayıcı kimliği
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        # KRİTİK: YouTube'un mobil uygulaması gibi davranarak çerez zorunluluğunu atlatır
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'ios'],
+                'skip': ['dash', 'hls']
+            }
+        }
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # download=False: Dosyayı sunucuya indirmez, sadece doğrudan ses linkini (raw url) alır.
             info = ydl.extract_info(video_url, download=False)
-            raw_url = info['url'] # İndirmeden direkt çalınacak link
+            raw_url = info['url'] 
     except Exception as e:
-        # Eğer hala çerez hatası verirse kullanıcıya detaylı hata dön
+        # Eğer hala hata verirse detaylı rapor sunar
         raise Exception(f"YouTube Akış Hatası: {str(e)}")
 
     return {
         'title': title,
         'thumbnail': thumb,
-        'file_path': raw_url, # player.py uyumu için isim korundu
+        'file_path': raw_url, # player.py'nin 'AudioPiped' ile çalması için linki yol olarak döndürüyoruz.
         'webpage_url': video_url
     }
