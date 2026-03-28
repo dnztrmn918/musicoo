@@ -1,9 +1,9 @@
 import yt_dlp
 
 def search_youtube(query):
-    # Çok kısıtlamıyoruz, bestaudio ile en iyi kaliteyi çekiyoruz
+    # m3u8 (HLS) formatlarını KESİN OLARAK engelliyoruz
     ydl_opts = {
-        'format': 'bestaudio/best',
+        'format': 'bestaudio[protocol^=http][protocol!*=m3u8]/bestaudio[ext=m4a]/bestaudio/best',
         'noplaylist': True,
         'quiet': True,
         'default_search': 'scsearch', 
