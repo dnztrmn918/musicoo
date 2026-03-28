@@ -39,8 +39,8 @@ def search_youtube(query):
 
     # 3. ADIM: YT-DLP İLE SES AKIŞ LİNKİNİ AL
     ydl_opts = {
-        # 🛡️ FORMAT GÜNCELLEMESİ: 'bestaudio' bulunamazsa mevcut en iyi formatı zorlar
-        'format': 'ba/b', 
+        # 🛡️ FORMAT FİX: Sadece ses (ba) bulamazsa mevcut en iyiyi (b) alır
+        'format': 'ba/b',
         'quiet': True,
         'no_warnings': True,
         'nocheckcertificate': True,
