@@ -1,4 +1,5 @@
 import asyncio
+import os
 from pyrogram import Client, filters
 from pyrogram.types import Message
 import player
@@ -21,7 +22,7 @@ async def is_admin(client, chat_id, user_id):
 async def play_cmd(client, message: Message):
     query = " ".join(message.command[1:])
     if not query:
-        return await message.reply("❌ Lütfen bir şarkı adı yazın.")
+        return await message.reply("❌ Lütfen bir şarkı adı yazın. (Örn: /play Sezen Aksu)")
         
     chat_id = message.chat.id
     user_name = message.from_user.first_name
@@ -87,22 +88,39 @@ async def stop_cmd(client, message: Message):
         pass
     await message.reply("🛑 **Müzik durduruldu ve kuyruk temizlendi. Asistan sesten ayrıldı.**")
 
-# 📜 KUYRUK LİSTESİ
+# 📜 RESİMLİ VE HİZALI KUYRUK LİSTESİ
 @Client.on_message(filters.command(["que", "list", "kuyruk"]) & filters.group)
 async def queue_cmd(client, message: Message):
     chat_queue = player.music_queue.get(message.chat.id, [])
     if not chat_queue:
-        return await message.reply("📂 **Kuyruk boş.**")
+        return await message.reply("📂 **Kuyruk boş.** Şarkı eklemek için `/play` komutunu kullanın.")
         
-    text = "📜 **Şarkı Kuyruğu:**\n\n"
-    text += f"🔊 **Şu An Çalan:** {chat_queue[0]['info']['title']} (👤 {chat_queue[0]['by']})\n\n"
+    # Güzel ve hizalı metin tasarımı
+    text = "📜 **MÜZİK KUYRUĞU**\n\n"
     
+    # 1. Şu an çalan şarkı
+    current = chat_queue[0]
+    text += "🎧 **Şu An Çalan:**\n"
+    text += f" └ 🎵 [{current['info']['title']}]({current['info']['webpage_url']})\n"
+    text += f" └ 👤 **İsteyen:** {current['by']}\n\n"
+    
+    # 2. Bekleyen şarkılar
     if len(chat_queue) > 1:
-        text += "⏳ **Bekleyenler:**\n"
+        text += "⏳ **Bekleyen Şarkılar:**\n"
         for i in range(1, len(chat_queue)):
-            text += f"**{i}.** {chat_queue[i]['info']['title']} (👤 {chat_queue[i]['by']})\n"
+            song = chat_queue[i]
+            text += f"**{i}.** [{song['info']['title']}]({song['info']['webpage_url']})\n"
+            text += f" └ 👤 **İsteyen:** {song['by']}\n"
     
-    await message.reply(text, disable_web_page_preview=True)
+    # Görselin yolu (plugins klasörü içindeki que.jpg)
+    # Eğer resminin uzantısı .png ise aşağıdaki kısmı "que.png" olarak değiştirebilirsin.
+    img_path = os.path.join(os.getcwd(), "plugins", "que.jpg") 
+    
+    # Eğer plugins klasöründe resim varsa resimli atar, yoksa sadece metin atar
+    if os.path.exists(img_path):
+        await message.reply_photo(photo=img_path, caption=text)
+    else:
+        await message.reply(text, disable_web_page_preview=True)
 
 # 🗑️ KUYRUKTAN ŞARKI SİLME
 @Client.on_message(filters.command(["sil", "del"]) & filters.group)
@@ -121,10 +139,3 @@ async def del_cmd(client, message: Message):
         try:
             index = int(message.command[1])
             if index < 1 or index >= len(chat_queue):
-                return await message.reply(f"❌ Geçersiz sıra! Lütfen 1 ile {len(chat_queue)-1} arasında bir sayı girin.")
-            
-            removed = player.remove_song_from_queue(message.chat.id, index)
-            if removed:
-                await message.reply(f"🗑 **Kuyruktan silindi:** {removed['info']['title']}")
-        except ValueError:
-            await message.reply("❌ Lütfen geçerli bir sayı girin. (Örn: /sil 1)")
