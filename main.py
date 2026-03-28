@@ -8,19 +8,17 @@ from database import init_db, add_sudo_user
 
 START_TIME = time.time()
 
-# 🛡️ GÜVENLİK KONTROLÜ: Asistanın gizlice beklemesini engeller
 if not config.SESSION:
-    print("❌ KRİTİK HATA: SESSION değişkeni boş! Koyeb'de Environment Variables kısmına kodu doğru eklediğinden emin ol.")
+    print("❌ KRİTİK HATA: SESSION değişkeni boş!")
     sys.exit(1)
 
+# plugins root tanımlamasını koruduk
 bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot_token=config.BOT_TOKEN, plugins=dict(root="plugins"))
-
-# in_memory=True ekledik: Eski bozuk dosyaları okuyup kafası karışmasın, sadece kodu kullansın
 userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION, in_memory=True)
 
 call = PyTgCalls(userbot)
 
-# Bot ve Asistanı player dosyasına gönderiyoruz
+# Player entegrasyonu
 import player
 player.call = call
 player.userbot = userbot
@@ -29,7 +27,11 @@ player.bot = bot
 @call.on_stream_end()
 async def stream_end(client, update):
     from plugins.events import on_stream_end_handler
-    await on_stream_end_handler(client, update)
+    # Bağlantı kopmalarına karşı güvenli çalıştırma
+    try:
+        await on_stream_end_handler(client, update)
+    except Exception as e:
+        print(f"❌ Stream End Error: {e}")
 
 async def main():
     print("🚀 Sistem Ayağa Kaldırılıyor...")
@@ -48,6 +50,9 @@ async def main():
 
     print("📞 Ses Motoru başlatılıyor...")
     await call.start()
+    
+    # KRİTİK: Sistemin oturması için kısa bir es (ConnectionError çözümü)
+    await asyncio.sleep(2)
 
     print("✅ Bot ve Asistan başarıyla aktif edildi!")
     await idle()
@@ -56,4 +61,5 @@ async def main():
     await userbot.stop()
 
 if __name__ == "__main__":
+    # Döngü yönetimini daha stabil hale getirdik
     asyncio.get_event_loop().run_until_complete(main())
