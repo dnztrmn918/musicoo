@@ -37,22 +37,20 @@ def search_youtube(query):
     thumbnails = data['items'][0]['snippet'].get('thumbnails', {})
     thumb = thumbnails.get('high', thumbnails.get('default', {})).get('url', "https://telegra.ph/file/69204068595f57731936c.jpg")
 
-    # 3. ADIM: YT-DLP İLE SES AKIŞ LİNKİNİ AL
+    # 3. ADIM: YT-DLP İLE SES AKIŞ LİNKİNİ AL (GERÇEK ÇÖZÜM)
     ydl_opts = {
-        # 🛡️ FORMAT GÜNCELLEMESİ: Sadece 'bestaudio' yerine mevcut en iyi akışı (ba/b) zorlar
-        'format': 'ba/b', 
+        'format': 'bestaudio/best', # Kendi doğal formatına döndürdük
         'quiet': True,
         'no_warnings': True,
         'nocheckcertificate': True,
         'source_address': '0.0.0.0',
         'geo_bypass': True,
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
         'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
+        # KRİTİK DEĞİŞİKLİK: 'skip': ['dash', 'hls'] kısmı SİLİNDİ!
+        # Ses formatlarına erişebilmesi için sadece istemcileri çeşitlendirdik.
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'ios', 'youtube_music', 'mweb'],
-                'player_skip': ['webpage', 'configs'],
-                'skip': ['dash', 'hls']
+                'player_client': ['android', 'ios', 'tv', 'web'] 
             }
         }
     }
@@ -60,7 +58,14 @@ def search_youtube(query):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
-            raw_url = info['url']
+            
+            # Bazen DASH akışlarında 'url' direkt info içinde gelmez, requested_formats içinde gelir.
+            # Bu güvenlik satırı, linkin %100 alınmasını sağlar.
+            raw_url = info.get('url') or (info.get('requested_formats') and info['requested_formats'][0].get('url'))
+            
+            if not raw_url:
+                raise Exception("Ses linki çıkartılamadı, format desteklenmiyor olabilir.")
+                
             return {
                 'title': title,
                 'thumbnail': thumb,
