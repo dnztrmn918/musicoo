@@ -1,7 +1,8 @@
 pyrofork
 py-tgcalls==2.2.11
 tgcrypto
-yt-dlp
+yt-dlp>=2024.03.10
+yt-dlp[default]
 asyncpg
 psutil
 requests
