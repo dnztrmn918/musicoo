@@ -3,7 +3,7 @@ import os
 from pytgcalls.types import MediaStream
 
 music_queue = {}
-last_message_ids = {} # Akıllı mesaj silme hafızası
+last_message_ids = {} 
 call = None 
 userbot = None
 bot = None
@@ -24,7 +24,7 @@ def format_playing_message(song_info, requested_by):
 async def add_to_queue_or_play(chat_id, song_info, requested_by):
     global music_queue, call
     if chat_id not in music_queue: music_queue[chat_id] = []
-    if len(music_queue[chat_id]) >= 6: return "FULL"
+    if len(music_queue[chat_id]) >= 10: return "FULL"
 
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
 
@@ -42,11 +42,8 @@ async def stream_end_handler(chat_id):
     if chat_id in music_queue and len(music_queue[chat_id]) > 0:
         music_queue[chat_id].pop(0)
         
-        # Eski mesajı sil
         if chat_id in last_message_ids:
-            try:
-                await bot.delete_messages(chat_id, last_message_ids[chat_id])
-                del last_message_ids[chat_id]
+            try: await bot.delete_messages(chat_id, last_message_ids[chat_id])
             except: pass
 
         if len(music_queue[chat_id]) > 0:
@@ -56,7 +53,7 @@ async def stream_end_handler(chat_id):
                 sent_msg = await bot.send_photo(
                     chat_id=chat_id,
                     photo=next_song['info']['thumbnail'],
-                    caption=f"⏭ **Sıradaki şarkıya geçildi!**\n\n" + format_playing_message(next_song['info'], next_song['by']),
+                    caption=f"⏭ **Sıradaki şarkı!**\n\n" + format_playing_message(next_song['info'], next_song['by']),
                     reply_markup=get_player_ui()
                 )
                 last_message_ids[chat_id] = sent_msg.id
@@ -64,7 +61,6 @@ async def stream_end_handler(chat_id):
             except:
                 return await stream_end_handler(chat_id)
         else:
-            # Kuyruk bitti asistanı çıkar
             music_queue.pop(chat_id, None)
             try:
                 await call.leave_call(chat_id)
@@ -73,7 +69,7 @@ async def stream_end_handler(chat_id):
             return "EMPTY"
     return None
 
-# --- LOGLARDAKİ HATALARI ÇÖZEN KRİTİK FONKSİYONLAR ---
+# --- LOGLARDAKİ HATALARI ÇÖZEN FONKSİYONLAR ---
 def clear_entire_queue(chat_id):
     if chat_id in music_queue:
         music_queue.pop(chat_id, None)
