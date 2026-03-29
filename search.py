@@ -108,3 +108,21 @@ def search_youtube(query):
                 return {
                     'title': info.get('title') or title or query,
                     'thumbnail': info.get('thumbnail') or thumb or "https://telegra.ph/file/69204068595f57731936c.jpg",
+                    'file_path': file_path,
+                    'webpage_url': info.get('webpage_url') or video_url
+                }
+        except Exception as e:
+            last_err = str(e)
+            
+            if any(x in last_err.lower() for x in ["sign in", "confirm you're not a bot", "cookies"]):
+                deezer = search_deezer(query)
+                if deezer: return deezer
+                sc = search_soundcloud(query)
+                if sc: return sc
+                break
+                
+            if any(x in last_err.lower() for x in ["network", "timeout", "try again", "temporarily"]):
+                continue
+            break
+
+    raise Exception(f"❌ Müzik Motoru Hatası: {last_err}")
