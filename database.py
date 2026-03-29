@@ -20,7 +20,7 @@ async def add_served_user(user_id):
     async with pool.acquire() as conn:
         await conn.execute("INSERT INTO served_users (user_id) VALUES ($1) ON CONFLICT DO NOTHING", user_id)
 
-async def add_sudo_user(user_id): # HATA BURADAYDI, EKLEDİK
+async def add_sudo_user(user_id):
     pool = await get_db()
     async with pool.acquire() as conn:
         await conn.execute("INSERT INTO sudo_users (user_id) VALUES ($1) ON CONFLICT DO NOTHING", user_id)
@@ -28,3 +28,4 @@ async def add_sudo_user(user_id): # HATA BURADAYDI, EKLEDİK
 async def get_served_users(): return []
 async def get_served_chats(): return []
 async def get_sudo_users(): return []
+async def is_sudo(u): return u == config.SUDO_OWNER_ID
