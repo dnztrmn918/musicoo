@@ -1,10 +1,15 @@
 import asyncio
 import os
+import sys
 import time
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
+
+# Eklentilerin ana dizindeki modülleri görebilmesi için garanti yol
+sys.path.append('.')
+
 import config
 import player 
 
@@ -24,27 +29,26 @@ def run_dummy_server():
     except: pass
 
 threading.Thread(target=run_dummy_server, daemon=True).start()
-plugins = dict(root="plugins")
 
+plugins = dict(root="plugins")
 bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot_token=config.BOT_TOKEN, plugins=plugins)
 userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION)
 call = PyTgCalls(userbot)
 
-# 🔥 SÜRÜM ÇAKIŞMASINI ÇÖZEN DİNAMİK DİNLEYİCİ
 @call.on_update()
 async def global_update_handler(client, update):
-    # Objenin adını alarak import veya attribute hatalarını sonsuza dek önlüyoruz
     update_name = update.__class__.__name__
     if update_name in ["StreamAudioEnded", "StreamVideoEnded", "StreamEnd"]:
+        print(f"✅ Şarkı bitti, otomatiğe geçiliyor. Chat: {update.chat_id}")
         await player.stream_end_handler(update.chat_id, action="auto")
 
 async def main():
-    print("🚀 Sistem başlatılıyor...")
+    print("🚀 Pi Müzik Sistem başlatılıyor...")
     try:
         from database import init_db
         await init_db()
     except Exception as e:
-        print(f"⚠️ Veritabanı başlatılamadı: {e}")
+        print(f"⚠️ Veritabanı uyarısı: {e}")
 
     await userbot.start()
     await bot.start()
@@ -55,7 +59,7 @@ async def main():
     player.bot = bot
 
     me = await bot.get_me()
-    print(f"✅ Bot (@{me.username}) başarıyla aktif edildi!")
+    print(f"✅ Bot (@{me.username}) başarıyla aktif edildi! Komutlar dinleniyor...")
     await idle()
 
 if __name__ == "__main__":
