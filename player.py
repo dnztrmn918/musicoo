@@ -1,8 +1,6 @@
 import asyncio
 import os
-# v0.9.7 için doğru içe aktarmalar eklendi
-from pytgcalls import StreamType
-from pytgcalls.types.input_stream import AudioPiped
+from pytgcalls.types import MediaStream
 
 music_queue = {}
 call = None
@@ -40,7 +38,6 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     if chat_id not in music_queue:
         music_queue[chat_id] = []
 
-    # 1 Çalan + 5 Kuyruk = Toplam 6 sınır
     if len(music_queue[chat_id]) >= 6:
         safe_delete(song_info.get("file_path"))
         return "FULL"
@@ -49,15 +46,10 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
-            if userbot:
-                try: await userbot.get_chat(chat_id)
-                except: pass
-            
-            # KRİTİK DÜZELTME: v0.9.7 motoru için stream_type eklendi
-            await call.join_group_call(
-                chat_id, 
-                AudioPiped(song_info["file_path"]),
-                stream_type=StreamType().pulse_stream
+            # KRİTİK DEĞİŞİM: Artık Node.js yok, saf C++ motoru çalıyor!
+            await call.play(
+                chat_id,
+                MediaStream(song_info["file_path"])
             )
             return "PLAYING"
         except Exception as e:
@@ -76,17 +68,17 @@ async def stream_end_handler(chat_id):
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
-                # KRİTİK DÜZELTME: v0.9.7 uyumlu şarkı atlama komutu
-                await call.change_stream(
-                    chat_id, 
-                    AudioPiped(next_song["info"]["file_path"])
+                # Yeni şarkıya geçerken de yeni komutumuz
+                await call.play(
+                    chat_id,
+                    MediaStream(next_song["info"]["file_path"])
                 )
                 return next_song
             except Exception:
                 return await stream_end_handler(chat_id)
         else:
             music_queue.pop(chat_id, None)
-            try: await call.leave_group_call(chat_id)
+            try: await call.leave_call(chat_id)
             except: pass
             return "EMPTY"
     return None
