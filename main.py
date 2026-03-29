@@ -7,10 +7,8 @@ from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
 import config
 
-# --- EKSİK OLAN DEĞİŞKEN ---
 START_TIME = time.time() 
 
-# --- KOYEB CANLI TUTMA SERVİSİ (HTTP SERVER) ---
 class DummyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -24,11 +22,8 @@ def run_dummy_server():
         httpd.serve_forever()
     except: pass
 
-# HTTP Server'ı ayrı bir thread'de başlatıyoruz
 threading.Thread(target=run_dummy_server, daemon=True).start()
 
-# --- BOT İSTEMCİLERİ ---
-# Plugins (Eklentiler) klasörünü tanımlıyoruz
 plugins = dict(root="plugins")
 
 bot = Client(
@@ -39,47 +34,41 @@ bot = Client(
     plugins=plugins
 )
 
-# BURASI DEĞİŞTİ: Pyrogram 1.4.16 uyumlu session tanımlaması (Zaferin kilidi)
+# 🔥 GÜNCEL v2.x YAPISINA GERİ DÖNDÜK!
 userbot = Client(
-    session_name=config.SESSION, 
+    "pi_assistant", 
     api_id=config.API_ID, 
-    api_hash=config.API_HASH
+    api_hash=config.API_HASH, 
+    session_string=config.SESSION
 )
 
-# Sesli sohbet motoru
 call = PyTgCalls(userbot)
 
 async def main():
     print("🚀 Sistem başlatılıyor...")
     
-    # 1. VERİTABANI BAĞLANTISINI KUR (NoneType hatasını çözer)
     try:
         from database import init_db
         await init_db()
     except Exception as e:
         print(f"⚠️ Veritabanı başlatılamadı: {e}")
 
-    # 2. İSTEMCİLERİ BAŞLAT
     await userbot.start()
     await bot.start()
     await call.start()
     print("📞 Ses Motoru ve Bot hazır!")
 
-    # 3. PLAYER MODÜLÜNÜ EŞİTLE (Hayati Önem Taşıyor)
     import player
     player.call = call
     player.userbot = userbot
     player.bot = bot
     
-    # Botun kullanıcı adını loglara yazalım
     me = await bot.get_me()
     print(f"✅ Bot (@{me.username}) ve Asistan başarıyla aktif edildi!")
     
-    # Botu açık tut
     await idle()
 
 if __name__ == "__main__":
-    # Python 3.10+ için en stabil çalıştırma yöntemi
     loop = asyncio.get_event_loop()
     try:
         loop.run_until_complete(main())
