@@ -2,7 +2,6 @@ import asyncio
 import time
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
-from pytgcalls.types.stream import StreamAudioEnded
 from database import add_served_chat
 import player
 
@@ -17,7 +16,7 @@ def get_readable_time(seconds: int) -> str:
 
 # --- ŞARKI BİTİŞ OLAYI (DECORATOR KALDIRILDI - ÇAKIŞMA ÖNLENDİ) ---
 async def on_stream_end_handler(client, update):
-    if isinstance(update, StreamAudioEnded):
+    if True:
         chat_id = update.chat_id
         result = await player.stream_end_handler(chat_id)
         
