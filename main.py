@@ -39,11 +39,11 @@ bot = Client(
     plugins=plugins
 )
 
+# BURASI DEĞİŞTİ: Pyrogram 1.4.16 uyumlu session tanımlaması (Zaferin kilidi)
 userbot = Client(
-    "pi_assistant", 
+    session_name=config.SESSION, 
     api_id=config.API_ID, 
-    api_hash=config.API_HASH, 
-    session_string=config.SESSION
+    api_hash=config.API_HASH
 )
 
 # Sesli sohbet motoru
