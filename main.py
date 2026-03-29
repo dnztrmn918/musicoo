@@ -50,7 +50,9 @@ player.call = call
 player.userbot = userbot
 player.bot = bot
 
-@call.on_stream_end()
+from pytgcalls import filters as ptc_filters
+
+@call.on_update(ptc_filters.stream_end)
 async def stream_end(client, update):
     from plugins.events import on_stream_end_handler
     # Olası hatalarda botun tamamen kapanmasını önlemek için try-except
