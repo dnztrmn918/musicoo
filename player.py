@@ -9,7 +9,6 @@ call = None
 userbot = None
 bot = None
 
-# --- FİZİKSEL DOSYA TEMİZLİĞİ ---
 def safe_delete(file_path):
     if not file_path or not os.path.exists(file_path): return
     is_used = any(song["info"].get("file_path") == file_path for queue in music_queue.values() for song in queue)
@@ -26,7 +25,6 @@ def get_player_ui():
         [InlineKeyboardButton("⏭ Atla", callback_data="skip"), InlineKeyboardButton("⏹ Bitir", callback_data="end")]
     ])
 
-# 🔥 İLK OYNATILAN ŞARKI FORMATI
 def format_playing_message(song_info, requested_by):
     duration = song_info.get('duration', 'Bilinmiyor')
     return (
@@ -45,7 +43,7 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
-            # 🔥 FİZİKSEL DOSYA ÇALINIYOR (SES KESİNTİSİ %0)
+            # 🔥 SENİN SÜRÜMÜNLE UYUMLU TEK OYNATMA METODU
             await call.play(chat_id, MediaStream(
                 song_info["file_path"], 
                 video_flags=MediaStream.Flags.IGNORE
@@ -57,7 +55,6 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     
     return "QUEUED", queue_pos
 
-# action parametresi main.py ile uyumlu olması için default "auto" yapıldı
 async def stream_end_handler(chat_id, action="auto"):
     global last_message_ids, music_queue
     if chat_id in music_queue and len(music_queue[chat_id]) > 0:
@@ -65,7 +62,6 @@ async def stream_end_handler(chat_id, action="auto"):
         finished_song = music_queue[chat_id].pop(0)
         safe_delete(finished_song["info"].get("file_path"))
         
-        # Eski mesajı sil
         if chat_id in last_message_ids:
             try: 
                 await bot.delete_messages(chat_id, last_message_ids[chat_id])
@@ -75,12 +71,12 @@ async def stream_end_handler(chat_id, action="auto"):
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
+                # 🔥 SENİN SÜRÜMÜNDE SIRADAKİNE GEÇME YÖNTEMİ
                 await call.play(chat_id, MediaStream(
                     next_song["info"]["file_path"], 
                     video_flags=MediaStream.Flags.IGNORE
                 ))
                 
-                # 🔥 ATLANAN ŞARKI FORMATI
                 if action == "skip":
                     caption = (
                         f"⏭ **Parça Atlandı!**\n"
@@ -108,7 +104,6 @@ async def stream_end_handler(chat_id, action="auto"):
             try: await call.leave_call(chat_id)
             except: pass
             
-            # 🔥 BİTİRİLDİĞİNDE VERİLECEK MESAJ
             if action == "end":
                 await bot.send_message(chat_id, "🛑 **Yayın sonlandırıldı. Kuyrukta parça kalmadığı için asistan sesli sohbetten ayrıldı.\nTekrar şarkı oynatmak için `/play` komutunu kullanın.**")
             else:
@@ -118,6 +113,10 @@ async def stream_end_handler(chat_id, action="auto"):
         except: pass
 
     return None
+
+# 🔥 main.py TARAFINDAN ÇAĞRILACAK WRAPPER
+async def stream_ended_handler_wrapper(_, update):
+    return await stream_end_handler(update.chat_id, action="auto")
 
 def clear_entire_queue(chat_id):
     if chat_id in music_queue:
