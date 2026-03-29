@@ -3,7 +3,7 @@ import os
 from pytgcalls.types import MediaStream
 
 music_queue = {}
-call = None # main.py tarafından doldurulacak
+call = None 
 userbot = None
 bot = None
 
@@ -22,8 +22,8 @@ def format_playing_message(song_info, requested_by):
 async def add_to_queue_or_play(chat_id, song_info, requested_by):
     global music_queue, call
     
-    # --- KRİTİK HATA ÇÖZÜCÜ: CANLI MOTOR KONTROLÜ ---
-    if call is None or not call.is_running:
+    # --- V2 UYUMLU MOTOR KONTROLÜ ---
+    if call is None:
         try:
             from main import call as active_call
             globals()['call'] = active_call
@@ -38,14 +38,14 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
 
     if len(music_queue[chat_id]) == 1:
-        # Motorun hazır olmasını 10 saniye boyunca zorla bekle
-        for _ in range(10):
-            if call and hasattr(call, "is_running") and call.is_running:
+        # is_running hatasını burada sildik, sadece call objesini bekliyoruz
+        for _ in range(5):
+            if call:
                 break
             await asyncio.sleep(1)
             
         try:
-            # Saf V2 Oynatma Komutu
+            # Saf V2 Oynatma
             await call.play(
                 chat_id,
                 MediaStream(
@@ -76,6 +76,3 @@ async def stream_end_handler(chat_id):
             except: pass
             return "EMPTY"
     return None
-
-def clear_entire_queue(chat_id):
-    if chat_id in music_queue: music_queue.pop(chat_id, None)
