@@ -59,7 +59,6 @@ async def play_cmd(client, message: Message):
     except Exception as e:
         await message.reply(f"❌ **Hata:** {str(e)[:50]}")
 
-# --- DURDUR / DEVAM ET ---
 @Client.on_message(filters.command(["stop", "dur", "pause", "durdur"]) & filters.group)
 async def pause_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
@@ -72,11 +71,9 @@ async def resume_cmd(client, message: Message):
     if await player.resume_stream(message.chat.id):
         await message.reply("▶️ **Müzik kaldığı yerden devam ediyor.**")
 
-# --- ATLA / BİTİR ---
 @Client.on_message(filters.command(["skip", "geç", "atla"]) & filters.group)
 async def skip_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
-    # Sürüm hatasını (drop_call) çözen en güvenli geçiş yöntemi
     await player.stream_end_handler(message.chat.id, action="skip")
 
 @Client.on_message(filters.command(["end", "bitir", "son"]) & filters.group)
@@ -85,14 +82,12 @@ async def end_cmd(client, message: Message):
     player.clear_entire_queue(message.chat.id)
     await player.stream_end_handler(message.chat.id, action="end")
 
-# --- SİL KOMUTU ---
 @Client.on_message(filters.command(["sil", "temizle", "clear"]) & filters.group)
 async def clean_text_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
     player.clear_queue_except_current(message.chat.id)
     await message.reply("🗑️ **Kuyruk temizlendi (Çalan hariç).**")
 
-# --- BUTONLAR ---
 @Client.on_callback_query(filters.regex("^(pause|resume|skip|end)$"))
 async def player_callbacks(client, query: CallbackQuery):
     c_id = query.message.chat.id
