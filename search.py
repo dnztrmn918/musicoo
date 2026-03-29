@@ -2,7 +2,6 @@ import yt_dlp
 import os
 import uuid
 
-# İndirme klasörünü oluştur
 if not os.path.exists("downloads"):
     os.makedirs("downloads")
 
@@ -15,8 +14,8 @@ def search_youtube(query):
     
     for engine in engines:
         search_query = f"{engine['code']}{query}"
-        
         file_name = f"downloads/{uuid.uuid4().hex}.%(ext)s"
+        
         ydl_opts = {
             "format": "bestaudio/best",
             "outtmpl": file_name,
@@ -39,23 +38,27 @@ def search_youtube(query):
                 else:
                     best_entry = info
 
+                # NoneType hatasını çözen garanti yol
+                file_path = ydl.prepare_filename(best_entry)
+                if not os.path.exists(file_path):
+                    if "requested_downloads" in best_entry:
+                        file_path = best_entry["requested_downloads"][0]["filepath"]
+
+                if not file_path or not os.path.exists(file_path):
+                    raise Exception("Dosya fiziksel olarak indirilemedi.")
+
                 duration_raw = best_entry.get('duration')
                 duration = f"{divmod(int(duration_raw), 60)[0]:02d}:{divmod(int(duration_raw), 60)[1]:02d}" if duration_raw else "Bilinmiyor"
 
-                # İndirilen dosyanın tam yolunu al (Fiziksel Dosya)
-                file_path = best_entry.get("requested_downloads", [{}])[0].get("filepath", "")
-                if not file_path:
-                    file_path = ydl.prepare_filename(best_entry)
-
                 return {
                     "title": best_entry.get('title', 'Bilinmeyen Parça'),
-                    "file_path": file_path, 
+                    "file_path": str(file_path), 
                     "thumbnail": best_entry.get('thumbnail', ''),
                     "duration": duration,
                     "source": engine['name']
                 }
             except Exception as e:
-                print(f"⚠️ {engine['name']} hatası: {str(e)[:40]}...")
+                print(f"⚠️ {engine['name']} hatası: {str(e)[:40]}")
                 continue
 
-    raise Exception("❌ Aradığın kriterlerde şarkı bulunamadı veya indirilemedi.")
+    raise Exception("❌ Şarkı bulunamadı veya indirilemedi.")
