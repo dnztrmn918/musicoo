@@ -1,7 +1,7 @@
 import asyncio
 import os
 from pytgcalls.types import MediaStream
-from pytgcalls import filters as fl # Handler filtreleri eklendi
+from pytgcalls import filters as fl
 
 # Global değişkenler (main.py tarafından doldurulacak)
 music_queue = {}
@@ -10,7 +10,7 @@ call = None
 userbot = None
 bot = None
 
-# --- YENİ EKLENEN AKILLI SİLME FONKSİYONU ---
+# --- AKILLI SİLME FONKSİYONU ---
 def safe_delete(file_path):
     """Dosyanın başka bir grupta çalınmadığından emin olup sunucudan siler"""
     if not file_path or not os.path.exists(file_path):
@@ -27,6 +27,8 @@ def safe_delete(file_path):
     if not is_used:
         try:
             os.remove(file_path)
+            import gc
+            gc.collect() # RAM temizliği için
             print(f"🗑️ Temizlik: {file_path} sunucudan silindi.")
         except Exception as e:
             print(f"⚠️ Dosya silinemedi: {e}")
@@ -113,10 +115,9 @@ async def stream_end_handler(chat_id):
             return "EMPTY"
     return None
 
-# --- OTOMATİK BİTİŞ DİNLEYİCİSİ ---
-@call.on_update(fl.stream_ended())
-async def stream_ended_handler(_, update):
-    # Bu handler şarkı bittiğinde senin fonksiyonunu tetikler
+# --- OTOMATİK BİTİŞ FONKSİYONU (main.py tarafından kaydedilecek) ---
+async def stream_ended_handler_wrapper(_, update):
+    """Bu fonksiyon dekoratör olmadan main.py'de kaydedilmeli"""
     return await stream_end_handler(update.chat_id)
 
 # --- YÖNETİM FONKSİYONLARI ---
@@ -135,13 +136,6 @@ def clear_queue_except_current(chat_id):
         music_queue[chat_id] = [current]
         for song in removed_songs:
             safe_delete(song["info"]["file_path"])
-
-def remove_song_from_queue(chat_id, index):
-    if chat_id in music_queue and 0 <= index < len(music_queue[chat_id]):
-        removed_song = music_queue[chat_id].pop(index)
-        safe_delete(removed_song["info"]["file_path"])
-        return removed_song
-    return None
 
 async def pause_stream(chat_id):
     try:
