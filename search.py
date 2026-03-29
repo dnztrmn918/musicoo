@@ -2,46 +2,35 @@ import yt_dlp
 import os
 
 def search_youtube(query):
-    # Mevcut dizini ve dosyayı kontrol et
-    current_dir = os.getcwd()
-    cookie_path = os.path.join(current_dir, "cookies.txt")
+    # Bu dosya bir kez oluştuktan sonra YouTube seni 'yasal cihaz' sayacak
+    token_file = "youtube_oauth2.json"
     
     ydl_opts = {
         "format": "bestaudio/best",
-        "quiet": True,
-        "no_warnings": True,
+        "quiet": False, 
         "default_search": "ytsearch",
         "nocheckcertificate": True,
-        "geo_bypass": True,
-        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        # --- OAUTH2 SİSTEMİ ---
+        "username": "oauth2",
+        "password": "", # OAuth2'de şifre boş bırakılır
+        "cookiefile": "cookies.txt" if os.path.exists("cookies.txt") else None,
     }
-    
-    # KESİN KONTROL: Dosya gerçekten orada mı?
-    if os.path.exists(cookie_path):
-        print(f"🍪 [KONTROL]: cookies.txt bulundu! Konum: {cookie_path}")
-        ydl_opts["cookiefile"] = cookie_path
-    else:
-        print(f"⚠️ [UYARI]: cookies.txt bulunamadı! Aranan konum: {cookie_path}")
-        # Eğer bulamazsa ana dizine bir daha bak
-        alt_path = "cookies.txt"
-        if os.path.exists(alt_path):
-            ydl_opts["cookiefile"] = alt_path
-            print("🍪 [KONTROL]: cookies.txt kök dizinde bulundu.")
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
-            print(f"🔍 [ARAMA]: {query} aranıyor...")
+            print(f"🔍 YouTube üzerinden aranıyor: {query}")
             info = ydl.extract_info(query, download=False)
             if 'entries' in info:
                 info = info['entries'][0]
             
             return {
-                "title": info.get('title', 'Bilinmeyen Şarkı'),
+                "title": info.get('title', 'Bilinmeyen Parça'),
                 "webpage_url": info.get('webpage_url', ''),
                 "file_path": info.get('url'),
                 "thumbnail": info.get('thumbnail', '')
             }
         except Exception as e:
-            # Hatayı daha detaylı ver ki ne olduğunu görelim
-            print(f"❌ [HATA]: YouTube işlemi başarısız: {str(e)}")
-            raise Exception(f"YouTube Arama Hatası: {str(e)}")
+            # Burası altın değerinde; loglarda kodu buradan göreceksin!
+            print(f"⚠️ YOUTUBE ONAY GEREKLİ: {str(e)}")
+            # Eğer loglarda link ve kod çıkarsa hemen Google'a girip onaylamalısın
+            raise Exception("YouTube Onay Bekliyor! Lütfen Koyeb loglarını kontrol et.")
