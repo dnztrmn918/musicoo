@@ -2,8 +2,7 @@ import yt_dlp
 import os
 
 def search_youtube(query):
-    # YouTube harici, IP engeli olmayan en sağlam motorlar
-    # Sıralamayı değiştirdim: SoundCloud en başta, sonra Saavn ve Bandcamp
+    # IP engeli olmayan en sağlam motorlar
     engines = [
         {"name": "SoundCloud", "code": "scsearch1:"},
         {"name": "JioSaavn", "code": "jssearch1:"},
@@ -22,6 +21,8 @@ def search_youtube(query):
             "noplaylist": True,
             "extract_flat": False,
             "skip_download": True,
+            # --- SES HATASINI ÇÖZEN KRİTİK AYARLAR ---
+            "protocol": "https", # Güvenli protokol zorla
             "headers": {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
             }
@@ -29,24 +30,24 @@ def search_youtube(query):
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
-                print(f"🔍 [{engine['name']}] Deneniyor: {query}")
-                # Arama sorgusunu doğrudan gönderiyoruz
+                print(f"🔍 [{engine['name']}] Aranıyor: {query}")
                 info = ydl.extract_info(search_query, download=False)
                 
                 if 'entries' in info and len(info['entries']) > 0:
                     entry = info['entries'][0]
                     
+                    # ASİSTANIN OKUYABİLECEĞİ SES LİNKİ
                     audio_url = entry.get('url')
                     if not audio_url:
                         continue
 
-                    # Süreyi hesapla
+                    # SÜRE HESAPLAMA (Örn: 03:45)
                     duration_raw = entry.get('duration')
                     if duration_raw:
                         mins, secs = divmod(int(duration_raw), 60)
                         duration = f"{mins:02d}:{secs:02d}"
                     else:
-                        duration = "Bilinmiyor"
+                        duration = "Canlı/Bilinmiyor"
 
                     return {
                         "title": entry.get('title', 'Bilinmeyen Parça'),
@@ -57,8 +58,7 @@ def search_youtube(query):
                         "source": engine['name']
                     }
             except Exception as e:
-                print(f"⚠️ {engine['name']} denemesi başarısız: {str(e)[:40]}")
+                print(f"⚠️ {engine['name']} hatası: {str(e)[:40]}...")
                 continue
 
-    # Hiçbirinde bulunamazsa en son 'Generic' bir arama dene (Doğrudan linkler için)
-    raise Exception("❌ Üzgünüm, Pi Müzik bu şarkıyı hiçbir kaynakta bulamadı. Lütfen farklı kelimelerle deneyin.")
+    raise Exception("❌ Üzgünüm, aradığın şarkıyı hiçbir kaynakta (SC/Saavn/Bandcamp) bulamadım.")
