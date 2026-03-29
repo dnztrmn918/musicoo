@@ -5,7 +5,7 @@ from database import add_served_user, get_served_users, get_served_chats
 import config
 
 DEVELOPER_LINK = "https://t.me/dnztrmnn"
-CHANNEL_LINK = "https://t.me/NowaDestek"
+CHANNEL_LINK = "https://t.me/KozaDestek"
 LOGO_PATH = os.path.join(os.getcwd(), "plugins", "logo.jpg")
 
 def start_panel(bot_username):
