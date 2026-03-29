@@ -6,9 +6,9 @@ if not os.path.exists("downloads"):
     os.makedirs("downloads")
 
 def search_youtube(query):
+    # SoundCloud ve JioSaavn'ı yedek olarak bıraktım ama ana hedef YouTube
     engines = [
         {"name": "YouTube", "code": "ytsearch1:"},
-        {"name": "JioSaavn", "code": "jssearch1:"},
         {"name": "SoundCloud", "code": "scsearch1:"}
     ]
     
@@ -16,7 +16,6 @@ def search_youtube(query):
         search_query = f"{engine['code']}{query}"
         file_name = f"downloads/{uuid.uuid4().hex}.%(ext)s"
         
-        # Temel yt-dlp ayarları
         ydl_opts = {
             "format": "bestaudio/best",
             "outtmpl": file_name,
@@ -26,19 +25,13 @@ def search_youtube(query):
             "geo_bypass": True,
             "noplaylist": True,
             "source_address": "0.0.0.0",
-            # YouTube bot engelini aşmak için yt-dlp'yi Android gibi gösteriyoruz:
-            "extractor_args": {"youtube": {"player_client": ["android", "web"]}}
+            # Usta işi Bypass: YouTube bot korumasını delen mobil ve TV istemcileri
+            "extractor_args": {"youtube": {"player_client": ["android", "ios", "tv"]}}
         }
-
-        # Çerez (Cookie) dosyasını sisteme entegre ediyoruz
-        if os.path.exists("cookies.txt"):
-            ydl_opts["cookiefile"] = "cookies.txt"
-        else:
-            print("⚠️ DİKKAT: 'cookies.txt' dosyası bulunamadı! YouTube indirmesi başarısız olabilir.")
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
-                print(f"🔍 [{engine['name']}] İndiriliyor: {query}")
+                print(f"🔍 [{engine['name']}] Aranıyor/İndiriliyor: {query}")
                 info = ydl.extract_info(search_query, download=True)
                 
                 if 'entries' in info and len(info['entries']) > 0:
@@ -46,14 +39,13 @@ def search_youtube(query):
                 else:
                     best_entry = info
 
-                # NoneType hatasını çözen garanti yol
                 file_path = ydl.prepare_filename(best_entry)
                 if not os.path.exists(file_path):
                     if "requested_downloads" in best_entry:
                         file_path = best_entry["requested_downloads"][0]["filepath"]
 
                 if not file_path or not os.path.exists(file_path):
-                    raise Exception("Dosya fiziksel olarak indirilemedi.")
+                    raise Exception("Fiziksel dosya oluşturulamadı.")
 
                 duration_raw = best_entry.get('duration')
                 duration = f"{divmod(int(duration_raw), 60)[0]:02d}:{divmod(int(duration_raw), 60)[1]:02d}" if duration_raw else "Bilinmiyor"
@@ -61,12 +53,12 @@ def search_youtube(query):
                 return {
                     "title": best_entry.get('title', 'Bilinmeyen Parça'),
                     "file_path": str(file_path), 
-                    "thumbnail": best_entry.get('thumbnail', ''),
+                    "thumbnail": best_entry.get('thumbnail', 'plugins/logo.jpg'),
                     "duration": duration,
                     "source": engine['name']
                 }
             except Exception as e:
-                print(f"⚠️ {engine['name']} hatası: {str(e)[:40]}")
+                print(f"⚠️ {engine['name']} Bypass edilemedi veya bulunamadı: {str(e)[:40]}")
                 continue
 
-    raise Exception("❌ Şarkı bulunamadı veya indirilemedi.")
+    return None # Hiçbir motorda bulunamazsa
