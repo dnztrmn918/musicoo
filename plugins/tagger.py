@@ -1,8 +1,8 @@
 import asyncio
 import random
 from pyrogram import Client, filters
-from pyrogram.enums import ChatMemberStatus
 
+# Sözlük artık {chat_id: etiket_sayisi} şeklinde veri tutacak
 active_tagging = {}
 
 G_MESSAGES = ["Günaydın güneş parçaları! ☀️", "Yeni gün, yeni umutlar! ☕", "Uyanın millet, sabah oldu! 🌅", "Gününüz huzurla dolsun. 🍀", "Gülümseyin, bugün harika bir gün! ✨", "Sıcacık bir günaydın! 🔥", "Dünya dönerken siz hala uyuyor musunuz? 🌍", "Güzelliklerle dolu bir sabah dilerim. 🌸", "Kahveler hazırsa uyanalım! ☕✨", "Enerji dolu bir günaydın! ⚡", "Güne mutlu başlayın! 🎈", "Mutluluk kapınızdan eksik olmasın! 🗝️", "Hadi uyanın, macera başlıyor! 🚀", "En güzel sabahlar sizinle olsun! 💎", "Gününüz aydın, neşeniz bol olsun! 🌈"]
@@ -17,19 +17,11 @@ async def unified_tagger(client, message):
         return await message.reply("⚠️ Zaten aktif bir etiketleme var!")
 
     user = await client.get_chat_member(chat_id, message.from_user.id)
-    if user.status not in [ChatMemberStatus.OWNER, ChatMemberStatus.ADMINISTRATOR]:
+    if user.status not in ["creator", "administrator"]:
         return await message.reply("❌ Yetkiniz yok.")
 
     cmd = message.command[0].lower()
-    tag_msg = ""
-    if cmd in ["tag", "utag"]: tag_msg = message.text.split(None, 1)[1] if len(message.command) > 1 else "Etiketleniyorsunuz..."
-    elif cmd == "gtag": tag_msg = random.choice(G_MESSAGES)
-    elif cmd == "itag": tag_msg = random.choice(I_MESSAGES)
-    elif cmd == "stag": tag_msg = random.choice(S_MESSAGES)
-    elif cmd == "ktag": tag_msg = random.choice(K_MESSAGES)
-
-    active_tagging[chat_id] = True
-    count = 0
+    active_tagging[chat_id] = 0 # Sayacı 0'dan başlatıyoruz
     await message.reply(f"🚀 **{cmd.upper()}** işlemi başlatıldı!")
 
     try:
@@ -37,16 +29,37 @@ async def unified_tagger(client, message):
             if chat_id not in active_tagging: break
             if member.user.is_bot or member.user.is_deleted: continue
             
-            await client.send_message(chat_id, f"{tag_msg}\n👤 {member.user.mention}")
-            count += 1
-            await asyncio.sleep(3) # FloodWait Koruması
+            # Rastgele mesaj seçimi
+            if cmd in ["tag", "utag"]: 
+                tag_msg = message.text.split(None, 1)[1] if len(message.command) > 1 else "Etiketleniyorsunuz..."
+            elif cmd == "gtag": tag_msg = random.choice(G_MESSAGES)
+            elif cmd == "itag": tag_msg = random.choice(I_MESSAGES)
+            elif cmd == "stag": tag_msg = random.choice(S_MESSAGES)
+            elif cmd == "ktag": tag_msg = random.choice(K_MESSAGES)
+
+            try:
+                await client.send_message(chat_id, f"{tag_msg}\n👤 {member.user.mention}")
+                active_tagging[chat_id] += 1 # Global sayacı artır
+                await asyncio.sleep(2.5)
+            except Exception:
+                await asyncio.sleep(5)
+                continue
+                
     finally:
+        # Eğer işlem /cancel ile bitmediyse normal bitiş mesajı
         if chat_id in active_tagging:
-            active_tagging.pop(chat_id)
-            await client.send_message(chat_id, f"✅ İşlem bitti. Etiketlenen: `{count}`")
+            final_count = active_tagging.pop(chat_id)
+            await client.send_message(chat_id, f"✅ İşlem bitti. Toplam etiketlenen: `{final_count}`")
 
 @Client.on_message(filters.command(["cancel", "iptal", "tagdur"]) & filters.group)
 async def cancel_tagging(client, message):
-    if message.chat.id in active_tagging:
-        active_tagging.pop(message.chat.id)
-        await message.reply(f"⏹ İşlem {message.from_user.mention} tarafından durduruldu.")
+    chat_id = message.chat.id
+    if chat_id in active_tagging:
+        count = active_tagging.pop(chat_id) # Sayıyı al ve listeden sil
+        await message.reply(
+            f"⏹ **İşlem Durduruldu!**\n"
+            f"👤 **Durduran:** {message.from_user.mention}\n"
+            f"📊 **Etiketlenen Kişi Sayısı:** `{count}`"
+        )
+    else:
+        await message.reply("❌ Şu an aktif bir işlem bulunmuyor.")
