@@ -38,11 +38,6 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     global music_queue, call
     if chat_id not in music_queue: music_queue[chat_id] = []
     
-    # 🔥 YENİ: KUYRUK LİMİTİ (1 Çalan + 5 Bekleyen = Toplam 6 Sınırı)
-    if len(music_queue[chat_id]) >= 6:
-        safe_delete(song_info["file_path"]) # İndirilen dosyayı sil, RAM'i koru
-        return "FULL", None
-
     queue_pos = len(music_queue[chat_id])
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
 
@@ -56,15 +51,6 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
             return "ERROR", f"{str(e)}"
     
     return "QUEUED", queue_pos
-
-# 🔥 YENİ: BELİRLİ BİR SIRADAKİ ŞARKIYI SİLME FONKSİYONU
-def remove_from_queue(chat_id, index):
-    # Çalan parça 0. indekstedir. O yüzden sırada 1. olan, listede 1. indekstir.
-    if chat_id in music_queue and len(music_queue[chat_id]) > index > 0:
-        removed_song = music_queue[chat_id].pop(index)
-        safe_delete(removed_song["info"].get("file_path"))
-        return removed_song["info"]["title"]
-    return None
 
 async def stream_end_handler(chat_id, action="auto"):
     global last_message_ids, music_queue
