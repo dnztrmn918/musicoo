@@ -2,6 +2,7 @@ import asyncio
 import os
 from pyrogram import Client, filters
 from pyrogram.types import Message, CallbackQuery
+from pyrogram.errors import FloodWait
 import player
 from search import search_youtube
 from plugins.assistant import assistant_join
@@ -23,7 +24,7 @@ async def play_cmd(client, message: Message):
     query = " ".join(message.command[1:])
     if not query: return await message.reply("❌ **Şarkı adı veya linki yazmalısın.**")
     
-    msg = await message.reply(f"🔍 **{BOT_NAME}** arıyor...")
+    msg = await message.reply(f"🔍 **{BOT_NAME}** arıyor ve indiriyor...")
     try:
         result = search_youtube(query)
         if not result: return await msg.edit("❌ Şarkı bulunamadı.")
@@ -47,7 +48,6 @@ async def play_cmd(client, message: Message):
             )
             player.last_message_ids[message.chat.id] = sent_p.id
 
-        # 🔥 ŞARKI ÇALARKEN YENİSİ EKLENİRSE BİLGİ YAZDIRIR
         elif status == "QUEUED":
             q_pos = extra
             caption_text = f"⏳ **Kuyruğa Eklendi (Sıra: {q_pos})**\n📌 **Parça:** `{result['title']}`\n👤 **İsteyen:** {message.from_user.first_name}"
@@ -59,51 +59,53 @@ async def play_cmd(client, message: Message):
     except Exception as e:
         await message.reply(f"❌ **Hata:** {str(e)[:50]}")
 
-# --- DURDURMA KOMUTLARI (PAUSE YAPANLAR) ---
-@Client.on_message(filters.command(["stop", "dur", "pause", "durdur", "beklet"]) & filters.group)
-async def pause_text_cmd(client, message: Message):
+# --- DURDUR/BEKLET KOMUTLARI ---
+@Client.on_message(filters.command(["stop", "dur", "pause", "durdur"]) & filters.group)
+async def pause_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
     if await player.pause_stream(message.chat.id):
         await message.reply("⏸ **Müzik duraklatıldı.**")
 
-# --- DEVAM ET KOMUTLARI (RESUME YAPANLAR) ---
-@Client.on_message(filters.command(["resume", "devam", "r"]) & filters.group)
-async def resume_text_cmd(client, message: Message):
+# --- DEVAM ET KOMUTLARI ---
+@Client.on_message(filters.command(["devam", "resume", "r"]) & filters.group)
+async def resume_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
     if await player.resume_stream(message.chat.id):
-        await message.reply("▶️ **Müzik devam ediyor.**")
+        await message.reply("▶️ **Müzik kaldığı yerden devam ediyor.**")
 
-# --- ATLA / BİTİR KOMUTLARI (SKIP VE END BİRLEŞTİRİLDİ) ---
-@Client.on_message(filters.command(["skip", "atla", "next", "n", "end", "bitir", "son"]) & filters.group)
-async def skip_end_cmd(client, message: Message):
+# --- ATLA (SKIP) KOMUTLARI ---
+@Client.on_message(filters.command(["skip", "geç", "atla"]) & filters.group)
+async def skip_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
-    
-    # Eğer komut skip ise ekrana atlandığını belirten ufak bir mesaj bırakır.
-    if message.command[0] in ["skip", "atla", "next", "n"]:
-        await message.reply("⏭ **Geçerli parça atlandı...**")
-    
-    # 🔥 drop_call yerine %100 ÇALIŞAN stream_end_handler kullanıldı.
-    # Görevi: Kuyrukta varsa sıradakine geç, yoksa çıkıp "Yayın Sonlandırıldı" de.
-    await player.stream_end_handler(message.chat.id)
+    await player.stream_end_handler(message.chat.id, action="skip")
 
+# --- BİTİR (END) KOMUTLARI ---
+@Client.on_message(filters.command(["end", "bitir", "son"]) & filters.group)
+async def end_cmd(client, message: Message):
+    if not await is_admin(client, message.chat.id, message.from_user.id): return
+    player.clear_entire_queue(message.chat.id)
+    await player.stream_end_handler(message.chat.id, action="end")
+
+# --- TEMİZLE (SIL) KOMUTLARI ---
 @Client.on_message(filters.command(["sil", "temizle", "clear"]) & filters.group)
 async def clean_text_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
     player.clear_queue_except_current(message.chat.id)
     await message.reply("🗑️ **Kuyruk temizlendi (Çalan hariç).**")
 
-# --- BUTONLAR (METİN KOMUTLARI İLE %100 AYNI İŞLEVİ YAPAR) ---
+# --- BUTONLAR (SPAM/FLOOD KORUMALI) ---
 @Client.on_callback_query(filters.regex("^(pause|resume|skip|end)$"))
 async def player_callbacks(client, query: CallbackQuery):
     c_id = query.message.chat.id
     if not await is_admin(client, c_id, query.from_user.id):
         return await query.answer("❌ Yetkin yok.", show_alert=True)
 
-    if query.data == "pause":
-        if await player.pause_stream(c_id): await query.answer("⏸ Durduruldu")
-    elif query.data == "resume":
-        if await player.resume_stream(c_id): await query.answer("▶️ Devam ediyor")
-    elif query.data in ["skip", "end"]:
-        await query.answer("⏭ İşlem uygulanıyor...")
-        # Hem skip hem end butonunda komutla aynı şekilde varsa geçer, yoksa çıkar
-        await player.stream_end_handler(c_id)
+    try:
+        if query.data == "pause":
+            if await player.pause_stream(c_id): await query.answer("⏸ Durduruldu")
+        elif query.data == "resume":
+            if await player.resume_stream(c_id): await query.answer("▶️ Devam ediyor")
+        elif query.data == "skip":
+            await query.answer("⏭ Atlanıyor...")
+            await player.stream_end_handler(c_id, action="skip")
+        elif query.data == "end":
