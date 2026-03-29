@@ -1,6 +1,6 @@
 pyrogram==2.0.106
-py-tgcalls>=2.0.0
-yt-dlp>=2025.01.15
+py-tgcalls==2.2.11
+yt-dlp>=2025.02.10
 tgcrypto
 asyncpg
 psutil
