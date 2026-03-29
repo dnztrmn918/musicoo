@@ -13,8 +13,9 @@ bot = None
 
 # 🔥 v2.x İÇİN EN STABİL PARAMETRELER: Headers eklendi (Ses gelmeme sorununu çözer)
 FFMPEG_PARAMS = (
-    '-headers "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" '
-    '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
+    '-headers "User-Agent: Mozilla/5.0" '
+    '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 '
+    '-af "volume=1.5" -c:a pcm_s16le -ac 2 -ar 48000' # 👈 Bu satır sesi garanti eder
 )
 
 # --- AKILLI SİLME FONKSİYONU ---
