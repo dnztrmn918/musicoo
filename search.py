@@ -2,49 +2,55 @@ import yt_dlp
 import os
 
 def search_youtube(query):
-    # Platformlar ve yt-dlp içindeki arama kodları
-    # scsearch: SoundCloud, jssearch: JioSaavn, deezsearch (veya generic): Deezer alternatifleri
+    # En stabil ve IP engeli olmayan motorlar en başta
     engines = [
         {"name": "SoundCloud", "code": "scsearch"},
         {"name": "JioSaavn", "code": "jssearch"},
-        {"name": "Deezer/Global", "code": "isrc"}, # ISRC üzerinden global kütüphane tarar
-        {"name": "YouTube (Yedek)", "code": "ytsearch"} # En son çare YouTube
+        {"name": "YouTube (Piped)", "code": "ytsearch"}
     ]
     
+    # Piped Proxy Listesi (YouTube için)
+    piped_proxies = [
+        "https://pipedapi.kavin.rocks",
+        "https://api.piped.yt",
+        "https://pipedapi.adminforge.de"
+    ]
+
     for engine in engines:
-        ydl_opts = {
-            "format": "bestaudio/best",
-            "quiet": True,
-            "no_warnings": True,
-            "default_search": engine["code"],
-            "nocheckcertificate": True,
-            "geo_bypass": True,
-        }
+        # Piped kullanılacaksa proxy döngüsü yap, yoksa tek seferlik [None]
+        current_proxies = piped_proxies if engine["name"] == "YouTube (Piped)" else [None]
         
-        # Sadece YouTube denenirken (eğer varsa) cookies.txt kullan
-        if engine["name"] == "YouTube (Yedek)" and os.path.exists("cookies.txt"):
-            ydl_opts["cookiefile"] = "cookies.txt"
+        for proxy in current_proxies:
+            ydl_opts = {
+                "format": "bestaudio/best",
+                "quiet": True,
+                "no_warnings": True,
+                "default_search": engine["code"],
+                "nocheckcertificate": True,
+                "geo_bypass": True,
+            }
+            
+            if proxy:
+                ydl_opts["proxy"] = proxy
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            try:
-                print(f"🔍 [{engine['name']}] üzerinden aranıyor: {query}")
-                # Arama yap ve bilgileri çek
-                info = ydl.extract_info(query, download=False)
-                
-                if 'entries' in info and len(info['entries']) > 0:
-                    info = info['entries'][0]
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                try:
+                    print(f"🔍 [{engine['name']}] Aranıyor: {query}")
+                    info = ydl.extract_info(query, download=False)
                     
-                    # Başarı durumunda bilgileri döndür
-                    return {
-                        "title": info.get('title', 'Bilinmeyen Parça'),
-                        "webpage_url": info.get('webpage_url', ''),
-                        "file_path": info.get('url'), # Bu, asistanın çalacağı direkt linktir
-                        "thumbnail": info.get('thumbnail', ''),
-                        "source": engine['name']
-                    }
-            except Exception as e:
-                print(f"⚠️ {engine['name']} başarısız: {str(e)[:50]}... Sıradakine geçiliyor.")
-                continue # Bir sonraki platforma geç
+                    if 'entries' in info and len(info['entries']) > 0:
+                        info = info['entries'][0]
+                        
+                        # Asistanın okuyabileceği direkt ses linkini (url) döndürür
+                        return {
+                            "title": info.get('title', 'Bilinmeyen Parça'),
+                            "webpage_url": info.get('webpage_url', ''),
+                            "file_path": info.get('url'), # KRİTİK: Ses buradadır
+                            "thumbnail": info.get('thumbnail', ''),
+                            "source": engine['name']
+                        }
+                except Exception as e:
+                    print(f"⚠️ {engine['name']} hatası: {str(e)[:50]}...")
+                    continue
 
-    # Eğer hiçbir platformda bulunamazsa
-    raise Exception("❌ Üzgünüm reis; SoundCloud, Saavn, Deezer ve YouTube'da bu şarkıyı bulamadım.")
+    raise Exception("❌ Hiçbir müzik platformunda şarkı bulunamadı.")
