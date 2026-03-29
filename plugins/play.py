@@ -21,7 +21,7 @@ async def is_admin(client, chat_id, user_id):
 @Client.on_message(filters.command(["play", "p", "oynat"]) & filters.group)
 async def play_cmd(client, message: Message):
     query = " ".join(message.command[1:])
-    if not query: return await message.reply("❌ **Şarkı adı yazmalısın.**")
+    if not query: return await message.reply("❌ **Şarkı adı veya linki yazmalısın.**")
     
     msg = await message.reply(f"🔍 **{BOT_NAME}** arıyor...")
     try:
@@ -31,19 +31,31 @@ async def play_cmd(client, message: Message):
         join_status = await assistant_join(client, message.chat.id)
         if join_status is not True: return await msg.edit(f"❌ Asistan hatası: {join_status}")
 
-        status = await player.add_to_queue_or_play(message.chat.id, result, message.from_user.first_name)
+        status, extra = await player.add_to_queue_or_play(message.chat.id, result, message.from_user.first_name)
         try: await msg.delete()
         except: pass
 
         if status == "PLAYING":
+            if message.chat.id in player.last_message_ids:
+                try: await client.delete_messages(message.chat.id, player.last_message_ids[message.chat.id])
+                except: pass
+            
             sent_p = await message.reply_photo(
                 photo=result.get('thumbnail') or DEFAULT_LOGO,
                 caption=player.format_playing_message(result, message.from_user.first_name),
                 reply_markup=player.get_player_ui()
             )
             player.last_message_ids[message.chat.id] = sent_p.id
+
+        # 🔥 ŞARKI ÇALARKEN YENİSİ EKLENİRSE BİLGİ YAZDIRIR
         elif status == "QUEUED":
-            await message.reply(f"⏳ **Kuyruğa Eklendi:** `{result['title']}`")
+            q_pos = extra
+            caption_text = f"⏳ **Kuyruğa Eklendi (Sıra: {q_pos})**\n📌 **Parça:** `{result['title']}`\n👤 **İsteyen:** {message.from_user.first_name}"
+            await message.reply_photo(photo=result.get('thumbnail') or DEFAULT_LOGO, caption=caption_text)
+            
+        elif status == "ERROR":
+            await message.reply(f"❌ **Oynatma Hatası:** {extra}")
+
     except Exception as e:
         await message.reply(f"❌ **Hata:** {str(e)[:50]}")
 
@@ -61,14 +73,18 @@ async def resume_text_cmd(client, message: Message):
     if await player.resume_stream(message.chat.id):
         await message.reply("▶️ **Müzik devam ediyor.**")
 
-# --- ATLA VE BİTİR KOMUTLARI (SKIP/END YAPANLAR) ---
+# --- ATLA / BİTİR KOMUTLARI (SKIP VE END BİRLEŞTİRİLDİ) ---
 @Client.on_message(filters.command(["skip", "atla", "next", "n", "end", "bitir", "son"]) & filters.group)
-async def skip_text_cmd(client, message: Message):
+async def skip_end_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
-    # Drop call, sıradaki şarkı varsa ona geçer, yoksa player.py içindeki bitiş mesajını atıp çıkar.
-    await player.call.drop_call(message.chat.id)
+    
+    # Eğer komut skip ise ekrana atlandığını belirten ufak bir mesaj bırakır.
     if message.command[0] in ["skip", "atla", "next", "n"]:
-        await message.reply("⏭ **Şarkı atlandı.**")
+        await message.reply("⏭ **Geçerli parça atlandı...**")
+    
+    # 🔥 drop_call yerine %100 ÇALIŞAN stream_end_handler kullanıldı.
+    # Görevi: Kuyrukta varsa sıradakine geç, yoksa çıkıp "Yayın Sonlandırıldı" de.
+    await player.stream_end_handler(message.chat.id)
 
 @Client.on_message(filters.command(["sil", "temizle", "clear"]) & filters.group)
 async def clean_text_cmd(client, message: Message):
@@ -76,6 +92,7 @@ async def clean_text_cmd(client, message: Message):
     player.clear_queue_except_current(message.chat.id)
     await message.reply("🗑️ **Kuyruk temizlendi (Çalan hariç).**")
 
+# --- BUTONLAR (METİN KOMUTLARI İLE %100 AYNI İŞLEVİ YAPAR) ---
 @Client.on_callback_query(filters.regex("^(pause|resume|skip|end)$"))
 async def player_callbacks(client, query: CallbackQuery):
     c_id = query.message.chat.id
@@ -86,6 +103,7 @@ async def player_callbacks(client, query: CallbackQuery):
         if await player.pause_stream(c_id): await query.answer("⏸ Durduruldu")
     elif query.data == "resume":
         if await player.resume_stream(c_id): await query.answer("▶️ Devam ediyor")
-    elif query.data == "skip" or query.data == "end":
-        await player.call.drop_call(c_id)
-        await query.answer("⏭ İşlem uygulandı")
+    elif query.data in ["skip", "end"]:
+        await query.answer("⏭ İşlem uygulanıyor...")
+        # Hem skip hem end butonunda komutla aynı şekilde varsa geçer, yoksa çıkar
+        await player.stream_end_handler(c_id)
