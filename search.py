@@ -1,16 +1,15 @@
 import yt_dlp
 import os
 
-# İndirilen dosyaların tutulacağı klasör
-DOWNLOAD_DIR = "downloads"
-if not os.path.exists(DOWNLOAD_DIR):
-    os.makedirs(DOWNLOAD_DIR)
+# NOT: Artık fiziksel indirme yapmadığımız için DOWNLOAD_DIR ve os.remove işlemleri boşa çıkacak.
+# Ama istersen klasör kontrolü kalsın, zarar gelmez.
 
 def search_youtube(query):
-    # IP engeli olmayan en sağlam motorlar
+    # 🚀 ÖNCELİK JIOSAAVN: Resmi ve kaliteli kayıt için Saavn en başa alındı.
+    # 🔍 SCSEARCH5: İlk 5 sonucu getiriyoruz ki içinden en iyisini seçelim.
     engines = [
-        {"name": "SoundCloud", "code": "scsearch1:"},
-        {"name": "JioSaavn", "code": "jssearch1:"},
+        {"name": "JioSaavn", "code": "jssearch5:"},
+        {"name": "SoundCloud", "code": "scsearch5:"},
         {"name": "Bandcamp", "code": "bcsearch1:"}
     ]
     
@@ -25,40 +24,55 @@ def search_youtube(query):
             "geo_bypass": True,
             "noplaylist": True,
             "extract_flat": False,
-            # --- DEĞİŞEN KRİTİK AYARLAR ---
-            "skip_download": False, # ARTIK SUNUCUYA FİZİKSEL OLARAK İNDİRİYORUZ
-            "outtmpl": os.path.join(DOWNLOAD_DIR, "%(id)s_%(extractor)s.%(ext)s"), # İndirilecek klasör ve dosya adı formatı
+            # ⚡ KRİTİK DEĞİŞİKLİK: İndirme kapalı, sadece linki alıyoruz.
+            "skip_download": True, 
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
-                print(f"🔍 [{engine['name']}] Aranıyor ve İndiriliyor: {query}")
-                info = ydl.extract_info(search_query, download=True) # İndirme işlemini tetikliyoruz
+                print(f"🔍 [{engine['name']}] İnceleniyor: {query}")
+                # download=False yaparak sadece metadata çekiyoruz (Saniyelik işlem)
+                info = ydl.extract_info(search_query, download=False)
                 
                 if 'entries' in info and len(info['entries']) > 0:
-                    entry = info['entries'][0]
-                else:
-                    entry = info
+                    # --- AKILLI FİLTRELEME BAŞLIYOR ---
+                    best_entry = None
+                    for entry in info['entries']:
+                        duration_s = entry.get('duration', 0)
+                        title = entry.get('title', '').lower()
+
+                        # 🛑 Shorts/Snippet Engeli: 60 saniyeden kısa şarkıları pas geç
+                        if duration_s < 60:
+                            continue
+                        
+                        # 🛑 Kötü Kelime Engeli: Başlıkta bunlar varsa pas geç
+                        blacklist = ["shorts", "teaser", "snippet", "fragman"]
+                        if any(word in title for word in blacklist):
+                            continue
+                        
+                        best_entry = entry
+                        break # Kriterlere uyan ilk uzun şarkıyı seç ve çık
                     
-                # İNDİRİLEN FİZİKSEL DOSYANIN SUNUCUDAKİ YERİNİ BULUYORUZ
-                file_path = ydl.prepare_filename(entry)
+                    if not best_entry:
+                        best_entry = info['entries'][0] # Filtreye uyan yoksa ilkine dön
+                else:
+                    best_entry = info
 
-                if not file_path or not os.path.exists(file_path):
-                    continue
-
-                # SÜRE HESAPLAMA (Örn: 03:45)
-                duration_raw = entry.get('duration')
+                # SÜRE FORMATLAMA
+                duration_raw = best_entry.get('duration')
                 if duration_raw:
                     mins, secs = divmod(int(duration_raw), 60)
                     duration = f"{mins:02d}:{secs:02d}"
                 else:
                     duration = "Bilinmiyor"
 
+                # 💡 ÖNEMLİ: 'file_path' anahtarını bozmadım ama içine artık 'url' (online link) koyuyorum.
+                # player.py bu sayede hata vermeden linki oynatacak.
                 return {
-                    "title": entry.get('title', 'Bilinmeyen Parça'),
-                    "webpage_url": entry.get('webpage_url', ''),
-                    "file_path": file_path,  # ARTIK LİNK DEĞİL, SUNUCUDAKİ DOSYA YOLU (Örn: downloads/123_soundcloud.m4a)
-                    "thumbnail": entry.get('thumbnail', ''),
+                    "title": best_entry.get('title', 'Bilinmeyen Parça'),
+                    "webpage_url": best_entry.get('webpage_url', ''),
+                    "file_path": best_entry.get('url'), # ARTIK LİNK, SUNUCUDA YER KAPLAMAZ
+                    "thumbnail": best_entry.get('thumbnail', ''),
                     "duration": duration,
                     "source": engine['name']
                 }
@@ -66,4 +80,4 @@ def search_youtube(query):
                 print(f"⚠️ {engine['name']} hatası: {str(e)[:40]}...")
                 continue
 
-    raise Exception("❌ Üzgünüm, aradığın şarkıyı bulamadım veya sunucuya indiremedim.")
+    raise Exception("❌ Aradığın kriterlerde kaliteli bir şarkı bulunamadı.")
