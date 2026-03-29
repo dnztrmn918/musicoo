@@ -2,46 +2,49 @@ import yt_dlp
 import os
 
 def search_youtube(query):
-    # Piped API Proxy Listesi (Biri çalışmazsa diğeri denenir)
-    piped_proxies = [
-        "https://pipedapi.kavin.rocks",
-        "https://api.piped.yt",
-        "https://pipedapi.moomoo.me"
+    # Platformlar ve yt-dlp içindeki arama kodları
+    # scsearch: SoundCloud, jssearch: JioSaavn, deezsearch (veya generic): Deezer alternatifleri
+    engines = [
+        {"name": "SoundCloud", "code": "scsearch"},
+        {"name": "JioSaavn", "code": "jssearch"},
+        {"name": "Deezer/Global", "code": "isrc"}, # ISRC üzerinden global kütüphane tarar
+        {"name": "YouTube (Yedek)", "code": "ytsearch"} # En son çare YouTube
     ]
     
-    # Motorlar: Önce YouTube (Piped ile), sonra SoundCloud
-    engines = ["ytsearch", "scsearch"]
-    
     for engine in engines:
-        for proxy in (piped_proxies if engine == "ytsearch" else [None]):
-            ydl_opts = {
-                "format": "bestaudio/best",
-                "quiet": True,
-                "no_warnings": True,
-                "default_search": engine,
-                "nocheckcertificate": True,
-                "geo_bypass": True,
-            }
-            
-            if proxy:
-                ydl_opts["proxy"] = proxy
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "quiet": True,
+            "no_warnings": True,
+            "default_search": engine["code"],
+            "nocheckcertificate": True,
+            "geo_bypass": True,
+        }
+        
+        # Sadece YouTube denenirken (eğer varsa) cookies.txt kullan
+        if engine["name"] == "YouTube (Yedek)" and os.path.exists("cookies.txt"):
+            ydl_opts["cookiefile"] = "cookies.txt"
 
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                try:
-                    print(f"🔍 [{engine}] {'Proxy: ' + proxy if proxy else ''} üzerinden aranıyor: {query}")
-                    info = ydl.extract_info(query, download=False)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            try:
+                print(f"🔍 [{engine['name']}] üzerinden aranıyor: {query}")
+                # Arama yap ve bilgileri çek
+                info = ydl.extract_info(query, download=False)
+                
+                if 'entries' in info and len(info['entries']) > 0:
+                    info = info['entries'][0]
                     
-                    if 'entries' in info and len(info['entries']) > 0:
-                        info = info['entries'][0]
-                        return {
-                            "title": info.get('title', 'Bilinmeyen Parça'),
-                            "webpage_url": info.get('webpage_url', ''),
-                            "file_path": info.get('url'),
-                            "thumbnail": info.get('thumbnail', ''),
-                            "source": engine
-                        }
-                except Exception as e:
-                    print(f"⚠️ {engine} denemesi başarısız: {str(e)}")
-                    continue # Diğer proxy veya motoru dene
+                    # Başarı durumunda bilgileri döndür
+                    return {
+                        "title": info.get('title', 'Bilinmeyen Parça'),
+                        "webpage_url": info.get('webpage_url', ''),
+                        "file_path": info.get('url'), # Bu, asistanın çalacağı direkt linktir
+                        "thumbnail": info.get('thumbnail', ''),
+                        "source": engine['name']
+                    }
+            except Exception as e:
+                print(f"⚠️ {engine['name']} başarısız: {str(e)[:50]}... Sıradakine geçiliyor.")
+                continue # Bir sonraki platforma geç
 
-    raise Exception("❌ Piped ve SoundCloud kaynakları tükendi, şarkı bulunamadı.")
+    # Eğer hiçbir platformda bulunamazsa
+    raise Exception("❌ Üzgünüm reis; SoundCloud, Saavn, Deezer ve YouTube'da bu şarkıyı bulamadım.")
