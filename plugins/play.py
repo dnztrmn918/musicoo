@@ -44,12 +44,10 @@ async def play_cmd(client, message: Message):
         except: pass
 
         if status == "PLAYING":
-            # Eski mesajı temizle (Varsa)
             if chat_id in player.last_message_ids:
                 try: await client.delete_messages(chat_id, player.last_message_ids[chat_id])
                 except: pass
             
-            # --- RESİM KONTROL MANTIĞI ---
             try:
                 sent_p = await message.reply_photo(
                     photo=result['thumbnail'], 
@@ -106,24 +104,23 @@ async def player_callbacks(client, query: CallbackQuery):
             await query.answer("⚠️ Zaten devam ediyor.", show_alert=True)
 
     elif data == "skip":
-        # Skip işleminde asistanı yeni şarkıya geçmesi için tetikliyoruz
         await query.answer("⏭ Şarkı atlanıyor...")
-        # v2.x için en güvenli skip: Yayını düşürmek (handler otomatik sıradakine geçer)
+        # Asenkron kilidi kırmak için drop_call deniyoruz
         try:
             await player.call.drop_call(chat_id)
-            await client.send_message(chat_id, "⏭ **Şarkı atlandı!**")
         except:
-            # Drop call çalışmazsa manuel handler tetikle
-            await player.stream_end_handler(chat_id)
+            # Eğer drop_call kilitlenirse arka planda handler'ı tetikle
+            asyncio.create_task(player.stream_end_handler(chat_id))
+        await client.send_message(chat_id, "⏭ **Şarkı başarıyla atlandı!**")
 
     elif data == "end":
         await query.answer("⏹ Yayın sonlandırıldı.")
         player.clear_entire_queue(chat_id)
-        try:
-            await player.call.leave_call(chat_id)
-            await query.message.delete()
+        # leave_call işlemini arka plana atıyoruz ki bot kilitlenmesin
+        asyncio.create_task(player.call.leave_call(chat_id))
+        try: await query.message.delete()
         except: pass
-        await client.send_message(chat_id, f"🛑 **{BOT_NAME} yayını sonlandırdı ve odadan ayrıldı.**")
+        await client.send_message(chat_id, f"🛑 **{BOT_NAME} yayını sonlandırdı ve sesten ayrıldı.**")
 
 @Client.on_message(filters.command(["que", "kuyruk"]) & filters.group)
 async def queue_cmd(client, message: Message):
@@ -144,3 +141,26 @@ async def queue_cmd(client, message: Message):
         if que_photo: await message.reply_photo(photo=que_photo, caption=text)
         else: await message.reply(text)
     except Exception: await message.reply(text)
+
+# 🔥 YENİ EKLENEN SİL KOMUTU 🔥
+@Client.on_message(filters.command(["sil", "del", "clean"]) & filters.group)
+async def clean_queue_cmd(client, message: Message):
+    chat_id = message.chat.id
+    if not await is_admin(client, chat_id, message.from_user.id):
+        return await message.reply("❌ **Bu komutu sadece yöneticiler kullanabilir.**")
+    
+    # Eğer parametre varsa (örn: /sil 2) o sıradaki şarkıyı siler
+    if len(message.command) > 1:
+        try:
+            idx = int(message.command[1])
+            removed = player.remove_song_from_queue(chat_id, idx)
+            if removed:
+                await message.reply(f"✅ `{removed['info']['title']}` **kuyruktan silindi.**")
+            else:
+                await message.reply("❌ **Belirtilen sırada bir şarkı bulunamadı.**")
+        except ValueError:
+            await message.reply("❌ **Lütfen geçerli bir sayı girin! (Örn: /sil 2)**")
+    else:
+        # Parametre yoksa (/sil) tüm sıradakileri temizler ama çalanı bırakır
+        player.clear_queue_except_current(chat_id)
+        await message.reply("🗑️ **Çalan şarkı hariç tüm kuyruk temizlendi!**")
