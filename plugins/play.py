@@ -30,6 +30,9 @@ async def play_cmd(client, message: Message):
     
     try:
         result = search_youtube(query)
+        if not result:
+            return await msg.edit("❌ **Şarkı bulunamadı!**")
+
         join_status = await assistant_join(client, chat_id)
         if join_status is not True: 
             return await msg.edit(f"❌ **Asistan hatası:** {join_status}")
@@ -41,21 +44,19 @@ async def play_cmd(client, message: Message):
         except: pass
 
         if status == "PLAYING":
-            # Eski mesajı temizle
+            # Eski mesajı temizle (Varsa)
             if chat_id in player.last_message_ids:
                 try: await client.delete_messages(chat_id, player.last_message_ids[chat_id])
                 except: pass
             
             # --- RESİM KONTROL MANTIĞI ---
             try:
-                # 1. Önce şarkının kendi thumbnail'ını dene
                 sent_p = await message.reply_photo(
                     photo=result['thumbnail'], 
                     caption=player.format_playing_message(result, user_name), 
                     reply_markup=player.get_player_ui()
                 )
             except Exception:
-                # 2. Şarkı resmi bozuksa/yoksa varsayılan logo.jpg'yi gönder
                 try:
                     sent_p = await message.reply_photo(
                         photo=DEFAULT_LOGO,
@@ -63,7 +64,6 @@ async def play_cmd(client, message: Message):
                         reply_markup=player.get_player_ui()
                     )
                 except Exception:
-                    # 3. Logo da yoksa sadece metin gönder
                     sent_p = await message.reply(
                         text=player.format_playing_message(result, user_name),
                         reply_markup=player.get_player_ui()
@@ -72,18 +72,17 @@ async def play_cmd(client, message: Message):
 
         elif status == "QUEUED":
             q_pos = len(player.music_queue[chat_id]) - 1
-            caption_text = f"⏳ **Kuyruğa Eklendi (Sıra: {q_pos})**\n📌 **Parça:** {result['title']}\n👤 **İsteyen:** {user_name}"
+            caption_text = f"⏳ **Kuyruğa Eklendi (Sıra: {q_pos})**\n📌 **Parça:** `{result['title']}`\n👤 **İsteyen:** {user_name}"
             try:
                 await message.reply_photo(photo=result['thumbnail'], caption=caption_text)
             except Exception:
-                try:
-                    await message.reply_photo(photo=DEFAULT_LOGO, caption=caption_text)
-                except Exception:
-                    await message.reply(caption_text)
+                try: await message.reply_photo(photo=DEFAULT_LOGO, caption=caption_text)
+                except Exception: await message.reply(caption_text)
 
     except Exception as e: 
-        try: await msg.edit(f"❌ **Hata:** {str(e)[:100]}")
-        except: await message.reply(f"❌ **Hata:** {str(e)[:100]}")
+        print(f"Play Hatası: {e}")
+        try: await message.reply(f"❌ **Hata:** {str(e)[:100]}")
+        except: pass
 
 # --- CALLBACK VE YÖNETİM KOMUTLARI ---
 @Client.on_callback_query(filters.regex("^(pause|resume|skip|end)$"))
@@ -93,21 +92,38 @@ async def player_callbacks(client, query: CallbackQuery):
         return await query.answer("❌ Bu işlemi sadece yöneticiler yapabilir.", show_alert=True)
 
     data = query.data
+    
     if data == "pause":
-        if await player.pause_stream(chat_id): await query.answer("⏸ Müzik duraklatıldı.")
+        if await player.pause_stream(chat_id):
+            await query.answer("⏸ Müzik duraklatıldı.")
+        else:
+            await query.answer("⚠️ Şu an duraklatılamıyor.", show_alert=True)
+
     elif data == "resume":
-        if await player.resume_stream(chat_id): await query.answer("▶️ Müzik devam ediyor.")
+        if await player.resume_stream(chat_id):
+            await query.answer("▶️ Müzik devam ediyor.")
+        else:
+            await query.answer("⚠️ Zaten devam ediyor.", show_alert=True)
+
     elif data == "skip":
-        await query.answer("⏭ Şarkı atlandı!")
-        await client.send_message(chat_id, "⏭ **Şarkı atlandı!**")
-        await player.stream_end_handler(chat_id)
+        # Skip işleminde asistanı yeni şarkıya geçmesi için tetikliyoruz
+        await query.answer("⏭ Şarkı atlanıyor...")
+        # v2.x için en güvenli skip: Yayını düşürmek (handler otomatik sıradakine geçer)
+        try:
+            await player.call.drop_call(chat_id)
+            await client.send_message(chat_id, "⏭ **Şarkı atlandı!**")
+        except:
+            # Drop call çalışmazsa manuel handler tetikle
+            await player.stream_end_handler(chat_id)
+
     elif data == "end":
+        await query.answer("⏹ Yayın sonlandırıldı.")
         player.clear_entire_queue(chat_id)
-        try: await player.call.leave_call(chat_id)
+        try:
+            await player.call.leave_call(chat_id)
+            await query.message.delete()
         except: pass
-        try: await query.message.delete()
-        except: pass
-        await client.send_message(chat_id, f"🛑 **{BOT_NAME} yayını sonlandırdı.**")
+        await client.send_message(chat_id, f"🛑 **{BOT_NAME} yayını sonlandırdı ve odadan ayrıldı.**")
 
 @Client.on_message(filters.command(["que", "kuyruk"]) & filters.group)
 async def queue_cmd(client, message: Message):
@@ -123,9 +139,7 @@ async def queue_cmd(client, message: Message):
             text += f" `{i}.` 📌 {song['info']['title']}\n"
     text += "\n━━━━━━━━━━━━━━━━━━━━"
     
-    # Öncelik que.png, yoksa logo.jpg
     que_photo = "que.png" if os.path.exists("que.png") else DEFAULT_LOGO if os.path.exists(DEFAULT_LOGO) else None
-
     try:
         if que_photo: await message.reply_photo(photo=que_photo, caption=text)
         else: await message.reply(text)
