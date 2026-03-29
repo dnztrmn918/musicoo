@@ -10,14 +10,12 @@ userbot = None
 bot = None
 
 def safe_delete(file_path):
-    # Dosya silme ve RAM temizleme (Çöp Toplayıcı) işlemi
     if not file_path or not os.path.exists(file_path): return
-    # Dosyanın kuyruktaki başka bir şarkı tarafından KULLANILMADIĞINDAN emin ol
     is_used = any(song["info"].get("file_path") == file_path for queue in music_queue.values() for song in queue)
     if not is_used:
         try:
             os.remove(file_path)
-            gc.collect() # RAM'i rahatlat
+            gc.collect() 
         except: pass
 
 def get_player_ui():
@@ -45,12 +43,11 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
-            # PyTgCalls v2 formatıyla direkt oynat
             await call.play(chat_id, MediaStream(song_info["file_path"]))
             return "PLAYING", None
         except Exception as e:
             if chat_id in music_queue: music_queue[chat_id].pop(0)
-            safe_delete(song_info["file_path"]) # Hata verirse çöp dosya kalmasın, sil
+            safe_delete(song_info["file_path"])
             return "ERROR", f"{str(e)}"
     
     return "QUEUED", queue_pos
@@ -58,7 +55,6 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 async def stream_end_handler(chat_id, action="auto"):
     global last_message_ids, music_queue
 
-    # 1. EĞER "BİTİR (END)" KOMUTU GELDİYSE
     if action == "end":
         clear_entire_queue(chat_id)
         try: await call.leave_call(chat_id)
@@ -71,40 +67,29 @@ async def stream_end_handler(chat_id, action="auto"):
         await bot.send_message(chat_id, "🛑 **Yayın sonlandırıldı. Kuyruk temizlendi ve asistan sesli sohbetten ayrıldı.**")
         return
 
-    # 2. ŞARKI KENDİLİĞİNDEN BİTTİYSE VEYA "ATLA (SKIP)" YAPILDIYSA
     if chat_id in music_queue and len(music_queue[chat_id]) > 0:
-        # Biten/Atlanan şarkıyı listeden çıkar ve DOSYASINI SİL
         finished_song = music_queue[chat_id].pop(0)
         safe_delete(finished_song["info"].get("file_path"))
         
-        # Eski mesajı sil
         if chat_id in last_message_ids:
             try: 
                 await bot.delete_messages(chat_id, last_message_ids[chat_id])
                 del last_message_ids[chat_id]
             except: pass
 
-        # Sırada başka şarkı varsa onu çal
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
                 await call.play(chat_id, MediaStream(next_song["info"]["file_path"]))
                 
                 if action == "skip":
-                    caption = (
-                        f"⏭ **Parça Atlandı!**\n"
-                        f"❌ **Atlanan:** `{finished_song['info']['title']}`\n\n"
-                        f"🎧 **Şu An Oynatılan:**\n"
-                        f"📌 `{next_song['info']['title']}`\n"
-                        f"⏳ **Süre:** `{next_song['info'].get('duration', 'Bilinmiyor')}`\n"
-                        f"👤 **Talep Eden:** {next_song['by']}"
-                    )
+                    caption = f"⏭ **Parça Atlandı!**\n❌ **Atlanan:** `{finished_song['info']['title']}`\n\n🎧 **Şu An Oynatılan:**\n📌 `{next_song['info']['title']}`\n⏳ **Süre:** `{next_song['info'].get('duration', 'Bilinmiyor')}`\n👤 **Talep Eden:** {next_song['by']}"
                 else:
                     caption = f"⏭ **Sıradaki Parçaya Geçildi!**\n\n" + format_playing_message(next_song['info'], next_song['by'])
 
                 sent_msg = await bot.send_photo(
                     chat_id=chat_id,
-                    photo=next_song['info'].get('thumbnail') or "plugins/logo.jpg",
+                    photo=next_song['info'].get('thumbnail', 'plugins/logo.jpg'),
                     caption=caption,
                     reply_markup=get_player_ui()
                 )
@@ -112,8 +97,6 @@ async def stream_end_handler(chat_id, action="auto"):
             except Exception as e:
                 print(f"Sıradakine geçiş hatası: {e}")
                 return await stream_end_handler(chat_id, action)
-        
-        # Sırada şarkı kalmadıysa
         else:
             music_queue.pop(chat_id, None)
             try: await call.leave_call(chat_id)
@@ -132,7 +115,7 @@ def clear_entire_queue(chat_id):
         queue = music_queue.pop(chat_id, None)
         if queue:
             for song in queue:
-                safe_delete(song["info"].get("file_path")) # Kuyruktaki tüm indirilenleri sil
+                safe_delete(song["info"].get("file_path"))
 
 def clear_queue_except_current(chat_id):
     if chat_id in music_queue and len(music_queue[chat_id]) > 1:
@@ -140,7 +123,7 @@ def clear_queue_except_current(chat_id):
         removed_songs = music_queue[chat_id][1:]
         music_queue[chat_id] = [current]
         for song in removed_songs:
-            safe_delete(song["info"].get("file_path")) # Sadece silinenlerin dosyalarını temizle
+            safe_delete(song["info"].get("file_path"))
 
 async def pause_stream(chat_id):
     try:
