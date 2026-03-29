@@ -91,4 +91,4 @@ async def stop_cmd(client, message: Message):
 
 # 📜 RESİMLİ VE HİZALI KUYRUK LİSTESİ
 @Client.on_message(filters.command(["que", "list", "kuyruk"]) & filters.group)
-async def queue_
+async def queue_cmd(client, message: Message):
