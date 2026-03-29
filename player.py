@@ -9,6 +9,29 @@ call = None
 userbot = None
 bot = None
 
+# --- YENİ EKLENEN AKILLI SİLME FONKSİYONU ---
+def safe_delete(file_path):
+    """Dosyanın başka bir grupta çalınmadığından emin olup sunucudan siler"""
+    if not file_path or not os.path.exists(file_path):
+        return
+    
+    # Şarkı hala başka bir grubun kuyruğunda var mı diye kontrol ediyoruz
+    is_used = False
+    for queue in music_queue.values():
+        for song in queue:
+            if song["info"].get("file_path") == file_path:
+                is_used = True
+                break
+        if is_used: break
+        
+    if not is_used:
+        try:
+            os.remove(file_path)
+            print(f"🗑️ Temizlik: {file_path} sunucudan silindi.")
+        except Exception as e:
+            print(f"⚠️ Dosya silinemedi: {e}")
+# ---------------------------------------------
+
 def get_player_ui():
     from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     # Bu butonlar plugins/play.py içindeki callback_query_handler ile konuşur
@@ -39,15 +62,16 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
-            # SES KALİTESİ VE UYUMLULUK İÇİN OPUS CODEC ZORLAMASI
+            # FİZİKSEL DOSYA ÇALINDIĞI İÇİN FFMPEG PARAMETRELERİ SADELEŞTİRİLDİ
             await call.play(chat_id, MediaStream(
                 song_info["file_path"], 
-                video_flags=MediaStream.Flags.IGNORE,
-                ffmpeg_parameters="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -vn -acodec libopus -b:a 128k -ar 48000 -ac 2"
+                video_flags=MediaStream.Flags.IGNORE
             ))
             return "PLAYING"
         except Exception as e:
-            if chat_id in music_queue: music_queue[chat_id].pop(0)
+            if chat_id in music_queue: 
+                failed_song = music_queue[chat_id].pop(0)
+                safe_delete(failed_song["info"]["file_path"]) # Hata verirse direkt sil
             print(f"❌ Oynatma Hatası: {e}")
             return f"ERROR: {str(e)}"
     return "QUEUED"
@@ -56,7 +80,10 @@ async def stream_end_handler(chat_id):
     """Şarkı bittiğinde veya atlandığında tetiklenir"""
     global last_message_ids, music_queue
     if chat_id in music_queue and len(music_queue[chat_id]) > 0:
-        music_queue[chat_id].pop(0)
+        
+        # Biten şarkıyı kuyruktan çıkar ve sunucudan SİL
+        finished_song = music_queue[chat_id].pop(0)
+        safe_delete(finished_song["info"]["file_path"])
         
         # Eski mesajı temizle
         if chat_id in last_message_ids:
@@ -66,10 +93,10 @@ async def stream_end_handler(chat_id):
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
+                # SIRADAKİ FİZİKSEL DOSYAYI ÇAL
                 await call.play(chat_id, MediaStream(
                     next_song["info"]["file_path"], 
-                    video_flags=MediaStream.Flags.IGNORE,
-                    ffmpeg_parameters="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -vn -acodec libopus -b:a 128k"
+                    video_flags=MediaStream.Flags.IGNORE
                 ))
                 
                 sent_msg = await bot.send_photo(
@@ -97,26 +124,18 @@ async def stream_end_handler(chat_id):
 
 def clear_entire_queue(chat_id):
     if chat_id in music_queue:
-        music_queue.pop(chat_id, None)
+        queue = music_queue.pop(chat_id, None)
+        if queue:
+            for song in queue:
+                safe_delete(song["info"]["file_path"])
 
 def clear_queue_except_current(chat_id):
     if chat_id in music_queue and len(music_queue[chat_id]) > 1:
         current = music_queue[chat_id][0]
+        removed_songs = music_queue[chat_id][1:]
         music_queue[chat_id] = [current]
+        for song in removed_songs:
+            safe_delete(song["info"]["file_path"])
 
 def remove_song_from_queue(chat_id, index):
-    if chat_id in music_queue and 0 <= index < len(music_queue[chat_id]):
-        return music_queue[chat_id].pop(index)
-    return None
-
-async def pause_stream(chat_id):
-    try:
-        await call.pause_stream(chat_id)
-        return True
-    except: return False
-
-async def resume_stream(chat_id):
-    try:
-        await call.resume_stream(chat_id)
-        return True
-    except: return False
+    if chat_id in music_queue and 0 <= index
