@@ -4,8 +4,9 @@ import time
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pyrogram import Client, idle
-from pytgcalls import PyTgCalls
+from pytgcalls import PyTgCalls, filters as fl # fl eklendi
 import config
+import player # player'ı burada import edebiliriz
 
 START_TIME = time.time() 
 
@@ -34,7 +35,6 @@ bot = Client(
     plugins=plugins
 )
 
-# 🔥 GÜNCEL v2.x YAPISINA GERİ DÖNDÜK!
 userbot = Client(
     "pi_assistant", 
     api_id=config.API_ID, 
@@ -53,15 +53,21 @@ async def main():
     except Exception as e:
         print(f"⚠️ Veritabanı başlatılamadı: {e}")
 
+    # ÖNCE CLIENT'LARI BAŞLAT
     await userbot.start()
     await bot.start()
     await call.start()
-    print("📞 Ses Motoru ve Bot hazır!")
-
-    import player
+    
+    # GLOBAL DEĞİŞKENLERİ AKTAR
     player.call = call
     player.userbot = userbot
     player.bot = bot
+
+    # 🔥 KRİTİK: OTOMATİK BİTİŞ DİNLEYİCİSİNİ BURADA KAYDEDİYORUZ
+    # Bu sayede call nesnesi "None" değilken kayıt yapılmış olur.
+    call.on_update(fl.stream_ended())(player.stream_ended_handler_wrapper)
+
+    print("📞 Ses Motoru, Bot ve Otomatik Bitiş Dinleyicisi hazır!")
     
     me = await bot.get_me()
     print(f"✅ Bot (@{me.username}) ve Asistan başarıyla aktif edildi!")
