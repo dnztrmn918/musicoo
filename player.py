@@ -45,18 +45,25 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
 
     if len(music_queue[chat_id]) == 1:
+        # GÜVENLİK KONTROLÜ: Motorun hazır olduğundan emin olalım
+        for _ in range(5): # 5 saniye boyunca motoru kontrol et
+            if call and hasattr(call, "is_running") and call.is_running:
+                break
+            await asyncio.sleep(1)
+            
         try:
-            # KRİTİK DEĞİŞİM: Artık Node.js yok, saf C++ motoru çalıyor!
+            # Saf C++ Motoru ile Oynatma
             await call.play(
                 chat_id,
                 MediaStream(song_info["file_path"])
             )
             return "PLAYING"
         except Exception as e:
+            err_msg = str(e)
             if music_queue[chat_id]:
                 failed_song = music_queue[chat_id].pop(0)
                 safe_delete(failed_song["info"].get("file_path"))
-            return f"ERROR_DETAIL: {str(e)}"
+            return f"ERROR_DETAIL: {err_msg}"
     return "QUEUED"
 
 async def stream_end_handler(chat_id):
@@ -68,7 +75,6 @@ async def stream_end_handler(chat_id):
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
-                # Yeni şarkıya geçerken de yeni komutumuz
                 await call.play(
                     chat_id,
                     MediaStream(next_song["info"]["file_path"])
