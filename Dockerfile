@@ -2,7 +2,7 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Node.js, FFmpeg ve Deno (YouTube JS şifrelemesi için zorunlu)
+# Node.js, FFmpeg ve Deno
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     git \
@@ -13,15 +13,13 @@ RUN apt-get update && apt-get install -y \
     && curl -fsSL https://deno.land/x/install/install.sh | sh \
     && rm -rf /var/lib/apt/lists/*
 
-# Deno yolunu sisteme ekliyoruz
 ENV PATH="/root/.deno/bin:$PATH"
 
 COPY . .
 
-# Python bağımlılıklarını yüklüyoruz
+# 🚨 DİKKAT: ÖNBELLEK KIRICI (CACHE BUSTER) - BU SATIR ÇOK ÖNEMLİ
+ARG CACHE_BUST=20260329
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 CMD ["python3", "main.py"]
-
-# V2 MOTORUNA GECIS ICIN ONBELLEK TEMIZLIGI
