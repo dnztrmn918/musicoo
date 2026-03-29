@@ -6,8 +6,9 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
+from pytgcalls import filters as ptg_filters
+from pytgcalls.types import Update
 
-# Eklentilerin ana dizindeki modülleri görebilmesi için garanti yol
 sys.path.append('.')
 
 import config
@@ -35,12 +36,11 @@ bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot
 userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION)
 call = PyTgCalls(userbot)
 
-@call.on_update()
-async def global_update_handler(client, update):
-    update_name = update.__class__.__name__
-    if update_name in ["StreamAudioEnded", "StreamVideoEnded", "StreamEnd"]:
-        print(f"✅ Şarkı bitti, otomatiğe geçiliyor. Chat: {update.chat_id}")
-        await player.stream_end_handler(update.chat_id, action="auto")
+# 🔥 YENİ: OTOMATİK GEÇİŞİ SAĞLAYAN DİNLEYİCİ
+@call.on_update(ptg_filters.stream_end)
+async def stream_end_event(client, update: Update):
+    print(f"✅ Şarkı bitti, otomatiğe geçiliyor. Chat: {update.chat_id}")
+    await player.stream_end_handler(update.chat_id, action="auto")
 
 async def main():
     print("🚀 Pi Müzik Sistem başlatılıyor...")
