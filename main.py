@@ -30,9 +30,10 @@ bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot
 userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION)
 call = PyTgCalls(userbot)
 
-# 🔥 v2.x İÇİN DOĞRU DİNLEYİCİ
+# 🔥 v2.x İÇİN %100 DOĞRU VE ÇAKISMAYAN DİNLEYİCİ
 @call.on_stream_end()
 async def stream_end_handler_main(client, update):
+    # Şarkı bittiğinde player.py'deki sıradakine geçme fonksiyonunu tetikler
     await player.stream_end_handler(update.chat_id)
 
 async def main():
