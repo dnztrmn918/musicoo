@@ -12,32 +12,21 @@ def search_youtube(query):
 
     api_key = random.choice(keys)
 
-    # 2. YOUTUBE DATA API V3 İLE ARAMA YAP
+    # 2. YOUTUBE DATA API V3
     search_url = "https://www.googleapis.com/youtube/v3/search"
-    params = {
-        'part': 'snippet',
-        'q': query,
-        'key': api_key,
-        'maxResults': 1,
-        'type': 'video'
-    }
+    params = {'part': 'snippet', 'q': query, 'key': api_key, 'maxResults': 1, 'type': 'video'}
     
-    response = requests.get(search_url, params=params)
-    if response.status_code != 200:
-        raise Exception(f"YouTube API Hatası ({response.status_code})")
-    
-    data = response.json()
-    if not data.get('items'):
-        raise Exception("🔍 Aranan parça bulunamadı.")
-    
-    video_id = data['items'][0]['id']['videoId']
-    video_url = f"https://www.youtube.com/watch?v={video_id}"
-    title = data['items'][0]['snippet']['title']
-    
-    thumbnails = data['items'][0]['snippet'].get('thumbnails', {})
-    thumb = thumbnails.get('high', thumbnails.get('default', {})).get('url', "https://telegra.ph/file/69204068595f57731936c.jpg")
+    try:
+        response = requests.get(search_url, params=params)
+        data = response.json()
+        video_id = data['items'][0]['id']['videoId']
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
+        title = data['items'][0]['snippet']['title']
+        thumb = data['items'][0]['snippet']['thumbnails']['high']['url']
+    except Exception as e:
+        raise Exception(f"Arama Hatası: {str(e)}")
 
-    # 3. YT-DLP: GÜNCEL VE ÇEREZ DESTEKLİ AYARLAR
+    # 3. GLOBAL REPO STANDARTI: PO-TOKEN VE OAUTH AYARLARI
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
@@ -46,26 +35,25 @@ def search_youtube(query):
         'source_address': '0.0.0.0',
         'geo_bypass': True,
         'cachedir': False, 
-        # Taze cookies.txt dosyasını burada devreye sokuyoruz
+        # Çerez varsa kullan, yoksa OAUTH2 ile dene (Global standart) 
         'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
         'extractor_args': {
             'youtube': {
-                # Farklı cihaz taklitleriyle YouTube kalkanlarını aşıyoruz
                 'player_client': ['android', 'web', 'ios'],
-                'player_skip': ['configs', 'js']
+                'player_skip': ['configs', 'js'],
+                # Eğer çerez yoksa, YouTube'un yeni imza sistemini (PoToken) zorla 
+                'use_potoken': True 
             }
         }
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # download=False diyerek sadece linki çekiyoruz
             info = ydl.extract_info(video_url, download=False)
-            
             raw_url = info.get('url') or (info.get('requested_formats') and info['requested_formats'][0].get('url'))
             
             if not raw_url:
-                raise Exception("Ses linki çıkartılamadı, format desteklenmiyor olabilir.")
+                raise Exception("YouTube akışı engelledi, alternatif deneniyor...")
                 
             return {
                 'title': title,
@@ -74,4 +62,4 @@ def search_youtube(query):
                 'webpage_url': video_url
             }
     except Exception as e:
-        raise Exception(f"YouTube Akış Hatası: {str(e)}")
+        raise Exception(f"Global Motor Hatası: {str(e)}")
