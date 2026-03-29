@@ -10,19 +10,21 @@ userbot = None
 bot = None
 
 def safe_delete(file_path):
+    # Dosya silme ve RAM temizleme (Çöp Toplayıcı) işlemi
     if not file_path or not os.path.exists(file_path): return
+    # Dosyanın kuyruktaki başka bir şarkı tarafından KULLANILMADIĞINDAN emin ol
     is_used = any(song["info"].get("file_path") == file_path for queue in music_queue.values() for song in queue)
     if not is_used:
         try:
             os.remove(file_path)
-            gc.collect() 
+            gc.collect() # RAM'i rahatlat
         except: pass
 
 def get_player_ui():
     from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("⏸ Dur", callback_data="pause"), InlineKeyboardButton("▶️ Devam", callback_data="resume")],
-        [InlineKeyboardButton("⏭ Atla", callback_data="skip"), InlineKeyboardButton("⏹ Bitir", callback_data="end")]
+        [InlineKeyboardButton("⏸ Durdur", callback_data="pause"), InlineKeyboardButton("▶️ Devam", callback_data="resume")],
+        [InlineKeyboardButton("⏭ Geç", callback_data="skip"), InlineKeyboardButton("⏹ Bitir", callback_data="end")]
     ])
 
 def format_playing_message(song_info, requested_by):
@@ -43,39 +45,50 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
-            # SADECE MEDIASTREAM İLE %100 UYUMLULUK
-            await call.play(chat_id, MediaStream(
-                song_info["file_path"], 
-                video_flags=MediaStream.Flags.IGNORE
-            ))
+            # PyTgCalls v2 formatıyla direkt oynat
+            await call.play(chat_id, MediaStream(song_info["file_path"]))
             return "PLAYING", None
         except Exception as e:
             if chat_id in music_queue: music_queue[chat_id].pop(0)
+            safe_delete(song_info["file_path"]) # Hata verirse çöp dosya kalmasın, sil
             return "ERROR", f"{str(e)}"
     
     return "QUEUED", queue_pos
 
 async def stream_end_handler(chat_id, action="auto"):
     global last_message_ids, music_queue
+
+    # 1. EĞER "BİTİR (END)" KOMUTU GELDİYSE
+    if action == "end":
+        clear_entire_queue(chat_id)
+        try: await call.leave_call(chat_id)
+        except: pass
+        if chat_id in last_message_ids:
+            try: 
+                await bot.delete_messages(chat_id, last_message_ids[chat_id])
+                del last_message_ids[chat_id]
+            except: pass
+        await bot.send_message(chat_id, "🛑 **Yayın sonlandırıldı. Kuyruk temizlendi ve asistan sesli sohbetten ayrıldı.**")
+        return
+
+    # 2. ŞARKI KENDİLİĞİNDEN BİTTİYSE VEYA "ATLA (SKIP)" YAPILDIYSA
     if chat_id in music_queue and len(music_queue[chat_id]) > 0:
-        
+        # Biten/Atlanan şarkıyı listeden çıkar ve DOSYASINI SİL
         finished_song = music_queue[chat_id].pop(0)
         safe_delete(finished_song["info"].get("file_path"))
         
+        # Eski mesajı sil
         if chat_id in last_message_ids:
             try: 
                 await bot.delete_messages(chat_id, last_message_ids[chat_id])
                 del last_message_ids[chat_id]
             except: pass
 
+        # Sırada başka şarkı varsa onu çal
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
-                # Eski kütüphanede hatasız sıradakine geçme yolu
-                try:
-                    await call.change_stream(chat_id, MediaStream(next_song["info"]["file_path"], video_flags=MediaStream.Flags.IGNORE))
-                except:
-                    await call.play(chat_id, MediaStream(next_song["info"]["file_path"], video_flags=MediaStream.Flags.IGNORE))
+                await call.play(chat_id, MediaStream(next_song["info"]["file_path"]))
                 
                 if action == "skip":
                     caption = (
@@ -91,7 +104,7 @@ async def stream_end_handler(chat_id, action="auto"):
 
                 sent_msg = await bot.send_photo(
                     chat_id=chat_id,
-                    photo=next_song['info']['thumbnail'],
+                    photo=next_song['info'].get('thumbnail') or "plugins/logo.jpg",
                     caption=caption,
                     reply_markup=get_player_ui()
                 )
@@ -99,27 +112,27 @@ async def stream_end_handler(chat_id, action="auto"):
             except Exception as e:
                 print(f"Sıradakine geçiş hatası: {e}")
                 return await stream_end_handler(chat_id, action)
+        
+        # Sırada şarkı kalmadıysa
         else:
             music_queue.pop(chat_id, None)
             try: await call.leave_call(chat_id)
             except: pass
             
-            if action == "end":
-                await bot.send_message(chat_id, "🛑 **Yayın sonlandırıldı. Kuyrukta parça kalmadığı için asistan sesli sohbetten ayrıldı.\nTekrar şarkı oynatmak için `/play` komutunu kullanın.**")
+            if action == "skip":
+                await bot.send_message(chat_id, "🛑 **Kuyrukta şarkı yok, asistan sesli sohbetten ayrılıyor.**")
             else:
                 await bot.send_message(chat_id, "🛑 **Kuyruk bitti, asistan sesten ayrıldı.**")
     else:
         try: await call.leave_call(chat_id)
         except: pass
 
-    return None
-
 def clear_entire_queue(chat_id):
     if chat_id in music_queue:
         queue = music_queue.pop(chat_id, None)
         if queue:
             for song in queue:
-                safe_delete(song["info"].get("file_path"))
+                safe_delete(song["info"].get("file_path")) # Kuyruktaki tüm indirilenleri sil
 
 def clear_queue_except_current(chat_id):
     if chat_id in music_queue and len(music_queue[chat_id]) > 1:
@@ -127,7 +140,7 @@ def clear_queue_except_current(chat_id):
         removed_songs = music_queue[chat_id][1:]
         music_queue[chat_id] = [current]
         for song in removed_songs:
-            safe_delete(song["info"].get("file_path"))
+            safe_delete(song["info"].get("file_path")) # Sadece silinenlerin dosyalarını temizle
 
 async def pause_stream(chat_id):
     try:
