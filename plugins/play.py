@@ -59,7 +59,7 @@ async def play_cmd(client, message: Message):
     except Exception as e:
         await message.reply(f"❌ **Hata:** {str(e)[:50]}")
 
-# --- DURDUR / DEVAM ET KOMUTLARI ---
+# --- DURDUR / DEVAM ET ---
 @Client.on_message(filters.command(["stop", "dur", "pause", "durdur"]) & filters.group)
 async def pause_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
@@ -72,14 +72,13 @@ async def resume_cmd(client, message: Message):
     if await player.resume_stream(message.chat.id):
         await message.reply("▶️ **Müzik kaldığı yerden devam ediyor.**")
 
-# --- ATLA KOMUTU ---
+# --- ATLA / BİTİR ---
 @Client.on_message(filters.command(["skip", "geç", "atla"]) & filters.group)
 async def skip_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
-    # action="skip" parametresi player.py'deki o "Atlanan Şarkı" formatını tetikler.
+    # Sürüm hatasını (drop_call) çözen en güvenli geçiş yöntemi
     await player.stream_end_handler(message.chat.id, action="skip")
 
-# --- BİTİR KOMUTU ---
 @Client.on_message(filters.command(["end", "bitir", "son"]) & filters.group)
 async def end_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
