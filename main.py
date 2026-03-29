@@ -4,9 +4,10 @@ import time
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pyrogram import Client, idle
-from pytgcalls import PyTgCalls, filters as fl # fl eklendi
+from pytgcalls import PyTgCalls
+from pytgcalls.types import Update # Güncel v2 yapısı için eklendi
 import config
-import player # player'ı burada import edebiliriz
+import player 
 
 START_TIME = time.time() 
 
@@ -44,6 +45,14 @@ userbot = Client(
 
 call = PyTgCalls(userbot)
 
+# 🔥 EN GARANTİ DİNLEYİCİ MANTIĞI:
+# Filtrelerle uğraşmadan, gelen her güncellemeyi kontrol eder.
+@call.on_update()
+async def handle_updates(client, update):
+    # Eğer gelen güncelleme bir 'StreamEnd' (yayın bitişi) ise:
+    if isinstance(update, Update.StreamEnd):
+        await player.stream_end_handler(update.chat_id)
+
 async def main():
     print("🚀 Sistem başlatılıyor...")
     
@@ -53,24 +62,19 @@ async def main():
     except Exception as e:
         print(f"⚠️ Veritabanı başlatılamadı: {e}")
 
-    # ÖNCE CLIENT'LARI BAŞLAT
     await userbot.start()
     await bot.start()
     await call.start()
     
-    # GLOBAL DEĞİŞKENLERİ AKTAR
+    # Global atamalar
     player.call = call
     player.userbot = userbot
     player.bot = bot
 
-    # 🔥 KRİTİK: OTOMATİK BİTİŞ DİNLEYİCİSİNİ BURADA KAYDEDİYORUZ
-    # Bu sayede call nesnesi "None" değilken kayıt yapılmış olur.
-    call.on_update(fl.stream_ended())(player.stream_ended_handler_wrapper)
-
-    print("📞 Ses Motoru, Bot ve Otomatik Bitiş Dinleyicisi hazır!")
+    print("📞 Ses Motoru ve Bot hazır!")
     
     me = await bot.get_me()
-    print(f"✅ Bot (@{me.username}) ve Asistan başarıyla aktif edildi!")
+    print(f"✅ Bot (@{me.username}) başarıyla aktif edildi!")
     
     await idle()
 
