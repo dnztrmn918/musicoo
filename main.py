@@ -19,7 +19,6 @@ class DummyHandler(BaseHTTPRequestHandler):
 
 def run_dummy_server():
     try:
-        # Koyeb genellikle PORT değişkenini atar, yoksa 8080 kullanırız
         port = int(os.environ.get("PORT", 8080))
         server_address = ('0.0.0.0', port)
         httpd = HTTPServer(server_address, DummyHandler)
@@ -28,7 +27,6 @@ def run_dummy_server():
     except Exception as e:
         print(f"⚠️ Web server hatası: {e}")
 
-# Arka planda sunucuyu başlat (Botun çalışmasını engellemez)
 threading.Thread(target=run_dummy_server, daemon=True).start()
 # ───────────────────────────────────────────────────
 
@@ -55,7 +53,6 @@ from pytgcalls import filters as ptc_filters
 @call.on_update(ptc_filters.stream_end)
 async def stream_end(client, update):
     from plugins.events import on_stream_end_handler
-    # Olası hatalarda botun tamamen kapanmasını önlemek için try-except
     try:
         await on_stream_end_handler(client, update)
     except Exception as e:
@@ -66,22 +63,22 @@ async def main():
     await init_db()
     await add_sudo_user(config.SUDO_OWNER_ID)
 
-    print("🤖 Ana Bot başlatılıyor...")
-    await bot.start()
-    
+    # 1. ÖNCE ASİSTANI BAŞLATIYORUZ
     print("👤 Asistan motoru ateşleniyor...")
     try:
         await userbot.start()
-        # KRİTİK EKSİK: Asistanın sisteme oturması için 5 saniye bekleme süresi
-        await asyncio.sleep(5) 
     except Exception as e:
         print(f"❌ ASİSTAN BAŞLATILAMADI: {e}")
         sys.exit(1)
 
+    # 2. SONRA SES MOTORUNU AYAĞA KALDIRIYORUZ
     print("📞 Ses Motoru başlatılıyor...")
-    # Pytgcalls başlatılırken hata payını minimize ediyoruz
     await call.start()
 
+    # 3. HER ŞEY HAZIR OLUNCA BOTU AÇIYORUZ (Erken komut almasın diye)
+    print("🤖 Ana Bot başlatılıyor...")
+    await bot.start()
+    
     print("✅ Bot ve Asistan başarıyla aktif edildi!")
     await idle()
     
@@ -93,7 +90,6 @@ async def main():
         pass
 
 if __name__ == "__main__":
-    # Döngüyü daha güvenli bir şekilde çalıştırıyoruz
     try:
         asyncio.get_event_loop().run_until_complete(main())
     except KeyboardInterrupt:
