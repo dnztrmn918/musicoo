@@ -1,8 +1,12 @@
 import yt_dlp
 import os
+import uuid
+
+# İndirme klasörünü oluştur
+if not os.path.exists("downloads"):
+    os.makedirs("downloads")
 
 def search_youtube(query):
-    # 🚀 YOUTUBE GERİ DÖNDÜ! Öncelik YouTube'da.
     engines = [
         {"name": "YouTube", "code": "ytsearch1:"},
         {"name": "JioSaavn", "code": "jssearch1:"},
@@ -12,47 +16,40 @@ def search_youtube(query):
     for engine in engines:
         search_query = f"{engine['code']}{query}"
         
+        file_name = f"downloads/{uuid.uuid4().hex}.%(ext)s"
         ydl_opts = {
             "format": "bestaudio/best",
+            "outtmpl": file_name,
             "quiet": True,
             "no_warnings": True,
             "nocheckcertificate": True,
             "geo_bypass": True,
             "noplaylist": True,
-            "skip_download": True, 
-            # 🔥 BAN AŞICI COOKIES AYARI (Klasörde cookies.txt olmalı)
             "cookiefile": "cookies.txt" if os.path.exists("cookies.txt") else None,
-            "source_address": "0.0.0.0" # IPv6 çakışmalarını önler
+            "source_address": "0.0.0.0" 
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
-                print(f"🔍 [{engine['name']}] İnceleniyor: {query}")
-                info = ydl.extract_info(search_query, download=False)
+                print(f"🔍 [{engine['name']}] İndiriliyor: {query}")
+                info = ydl.extract_info(search_query, download=True)
                 
                 if 'entries' in info and len(info['entries']) > 0:
-                    best_entry = None
-                    for entry in info['entries']:
-                        duration_s = entry.get('duration', 0)
-                        title = entry.get('title', '').lower()
-
-                        if duration_s < 30: continue
-                        if any(word in title for word in ["shorts", "teaser", "snippet", "fragman"]): continue
-                        
-                        best_entry = entry
-                        break 
-                    
-                    if not best_entry: best_entry = info['entries'][0]
+                    best_entry = info['entries'][0]
                 else:
                     best_entry = info
 
                 duration_raw = best_entry.get('duration')
                 duration = f"{divmod(int(duration_raw), 60)[0]:02d}:{divmod(int(duration_raw), 60)[1]:02d}" if duration_raw else "Bilinmiyor"
 
+                # İndirilen dosyanın tam yolunu al (Fiziksel Dosya)
+                file_path = best_entry.get("requested_downloads", [{}])[0].get("filepath", "")
+                if not file_path:
+                    file_path = ydl.prepare_filename(best_entry)
+
                 return {
                     "title": best_entry.get('title', 'Bilinmeyen Parça'),
-                    "webpage_url": best_entry.get('webpage_url', ''),
-                    "file_path": best_entry.get('url'), 
+                    "file_path": file_path, 
                     "thumbnail": best_entry.get('thumbnail', ''),
                     "duration": duration,
                     "source": engine['name']
@@ -61,4 +58,4 @@ def search_youtube(query):
                 print(f"⚠️ {engine['name']} hatası: {str(e)[:40]}...")
                 continue
 
-    raise Exception("❌ Aradığın kriterlerde kaliteli bir şarkı bulunamadı.")
+    raise Exception("❌ Aradığın kriterlerde şarkı bulunamadı veya indirilemedi.")
