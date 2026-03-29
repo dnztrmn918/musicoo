@@ -2,6 +2,7 @@ import asyncio
 import os
 from pytgcalls.types import MediaStream
 from pytgcalls import filters as fl
+import gc
 
 # Global değişkenler (main.py tarafından doldurulacak)
 music_queue = {}
@@ -10,9 +11,12 @@ call = None
 userbot = None
 bot = None
 
+# v2.x için en stabil FFmpeg parametreleri (URL kopmalarını engeller)
+FFMPEG_PARAMS = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+
 # --- AKILLI SİLME FONKSİYONU ---
 def safe_delete(file_path):
-    """Dosyanın başka bir grupta çalınmadığından emin olup sunucudan siler"""
+    """Eğer dosya bir yerel yolsa ve başka grupta çalınmıyorsa siler"""
     if not file_path or not os.path.exists(file_path):
         return
     
@@ -27,8 +31,7 @@ def safe_delete(file_path):
     if not is_used:
         try:
             os.remove(file_path)
-            import gc
-            gc.collect() # RAM temizliği için
+            gc.collect() 
             print(f"🗑️ Temizlik: {file_path} sunucudan silindi.")
         except Exception as e:
             print(f"⚠️ Dosya silinemedi: {e}")
@@ -61,9 +64,11 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
+            # 🔥 KRİTİK: URL'den ses gelmesi için ffmpeg_parameters eklendi
             await call.play(chat_id, MediaStream(
                 song_info["file_path"], 
-                video_flags=MediaStream.Flags.IGNORE
+                video_flags=MediaStream.Flags.IGNORE,
+                ffmpeg_parameters=FFMPEG_PARAMS
             ))
             return "PLAYING"
         except Exception as e:
@@ -89,9 +94,11 @@ async def stream_end_handler(chat_id):
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
+                # 🔥 KRİTİK: Sıradaki şarkı için de parametreler eklendi
                 await call.play(chat_id, MediaStream(
                     next_song["info"]["file_path"], 
-                    video_flags=MediaStream.Flags.IGNORE
+                    video_flags=MediaStream.Flags.IGNORE,
+                    ffmpeg_parameters=FFMPEG_PARAMS
                 ))
                 
                 sent_msg = await bot.send_photo(
@@ -106,7 +113,6 @@ async def stream_end_handler(chat_id):
                 print(f"❌ Geçiş Hatası: {e}")
                 return await stream_end_handler(chat_id)
         else:
-            # Liste boşaldı - ASİSTAN ÇIKIYOR
             music_queue.pop(chat_id, None)
             try:
                 await call.leave_call(chat_id)
@@ -115,9 +121,8 @@ async def stream_end_handler(chat_id):
             return "EMPTY"
     return None
 
-# --- OTOMATİK BİTİŞ FONKSİYONU (main.py tarafından kaydedilecek) ---
+# --- OTOMATİK BİTİŞ FONKSİYONU ---
 async def stream_ended_handler_wrapper(_, update):
-    """Bu fonksiyon dekoratör olmadan main.py'de kaydedilmeli"""
     return await stream_end_handler(update.chat_id)
 
 # --- YÖNETİM FONKSİYONLARI ---
@@ -128,14 +133,6 @@ def clear_entire_queue(chat_id):
         if queue:
             for song in queue:
                 safe_delete(song["info"]["file_path"])
-
-def clear_queue_except_current(chat_id):
-    if chat_id in music_queue and len(music_queue[chat_id]) > 1:
-        current = music_queue[chat_id][0]
-        removed_songs = music_queue[chat_id][1:]
-        music_queue[chat_id] = [current]
-        for song in removed_songs:
-            safe_delete(song["info"]["file_path"])
 
 async def pause_stream(chat_id):
     try:
