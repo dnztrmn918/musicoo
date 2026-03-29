@@ -43,7 +43,7 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
-            # 🔥 SENİN SÜRÜMÜNLE UYUMLU TEK OYNATMA METODU
+            # SADECE MEDIASTREAM İLE %100 UYUMLULUK
             await call.play(chat_id, MediaStream(
                 song_info["file_path"], 
                 video_flags=MediaStream.Flags.IGNORE
@@ -71,11 +71,11 @@ async def stream_end_handler(chat_id, action="auto"):
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
-                # 🔥 SENİN SÜRÜMÜNDE SIRADAKİNE GEÇME YÖNTEMİ
-                await call.play(chat_id, MediaStream(
-                    next_song["info"]["file_path"], 
-                    video_flags=MediaStream.Flags.IGNORE
-                ))
+                # Eski kütüphanede hatasız sıradakine geçme yolu
+                try:
+                    await call.change_stream(chat_id, MediaStream(next_song["info"]["file_path"], video_flags=MediaStream.Flags.IGNORE))
+                except:
+                    await call.play(chat_id, MediaStream(next_song["info"]["file_path"], video_flags=MediaStream.Flags.IGNORE))
                 
                 if action == "skip":
                     caption = (
@@ -113,10 +113,6 @@ async def stream_end_handler(chat_id, action="auto"):
         except: pass
 
     return None
-
-# 🔥 main.py TARAFINDAN ÇAĞRILACAK WRAPPER
-async def stream_ended_handler_wrapper(_, update):
-    return await stream_end_handler(update.chat_id, action="auto")
 
 def clear_entire_queue(chat_id):
     if chat_id in music_queue:
