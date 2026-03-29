@@ -83,60 +83,12 @@ async def stop_cmd(client, message: Message):
         
     player.clear_entire_queue(message.chat.id)
     try:
-        await player.call.leave_group_call(message.chat.id)
+        # KRİTİK DEĞİŞİKLİK: leave_group_call artık leave_call oldu (V2 Uyumu)
+        await player.call.leave_call(message.chat.id)
     except:
         pass
     await message.reply("🛑 **Müzik durduruldu ve kuyruk temizlendi. Asistan sesten ayrıldı.**")
 
 # 📜 RESİMLİ VE HİZALI KUYRUK LİSTESİ
 @Client.on_message(filters.command(["que", "list", "kuyruk"]) & filters.group)
-async def queue_cmd(client, message: Message):
-    chat_queue = player.music_queue.get(message.chat.id, [])
-    if not chat_queue:
-        return await message.reply("📂 **Kuyruk boş.** Şarkı eklemek için `/play` komutunu kullanın.")
-        
-    text = "📜 **MÜZİK KUYRUĞU**\n\n"
-    
-    current = chat_queue[0]
-    text += "🎧 **Şu An Çalan:**\n"
-    text += f" └ 🎵 [{current['info']['title']}]({current['info']['webpage_url']})\n"
-    text += f" └ 👤 **İsteyen:** {current['by']}\n\n"
-    
-    if len(chat_queue) > 1:
-        text += "⏳ **Bekleyen Şarkılar:**\n"
-        for i in range(1, len(chat_queue)):
-            song = chat_queue[i]
-            text += f"**{i}.** [{song['info']['title']}]({song['info']['webpage_url']})\n"
-            text += f" └ 👤 **İsteyen:** {song['by']}\n"
-    
-    img_path = os.path.join(os.getcwd(), "plugins", "que.jpg") 
-    
-    if os.path.exists(img_path):
-        await message.reply_photo(photo=img_path, caption=text)
-    else:
-        await message.reply(text, disable_web_page_preview=True)
-
-# 🗑️ KUYRUKTAN ŞARKI SİLME
-@Client.on_message(filters.command(["sil", "del"]) & filters.group)
-async def del_cmd(client, message: Message):
-    if not await is_admin(client, message.chat.id, message.from_user.id):
-        return await message.reply("❌ Bu komutu sadece sesli sohbet yöneticileri kullanabilir.")
-        
-    chat_queue = player.music_queue.get(message.chat.id, [])
-    if len(chat_queue) <= 1:
-        return await message.reply("📂 **Kuyrukta bekleyen şarkı yok.**")
-        
-    if len(message.command) == 1:
-        player.clear_queue_except_current(message.chat.id)
-        await message.reply("🧹 **Kuyruktaki tüm bekleyen şarkılar silindi.**")
-    else:
-        try:
-            index = int(message.command[1])
-            if index < 1 or index >= len(chat_queue):
-                return await message.reply(f"❌ Geçersiz sıra! Lütfen 1 ile {len(chat_queue)-1} arasında bir sayı girin.")
-            
-            removed = player.remove_song_from_queue(message.chat.id, index)
-            if removed:
-                await message.reply(f"🗑 **Kuyruktan silindi:** {removed['info']['title']}")
-        except ValueError:
-            await message.reply("❌ Lütfen geçerli bir sayı girin. (Örn: /sil 1)")
+async def queue_
