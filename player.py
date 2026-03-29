@@ -2,7 +2,7 @@ import asyncio
 import os
 from pytgcalls.types import MediaStream
 
-# Global değişkenler
+# Global değişkenler (main.py tarafından doldurulacak)
 music_queue = {}
 last_message_ids = {}
 call = None 
@@ -11,6 +11,7 @@ bot = None
 
 def get_player_ui():
     from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    # Plugin'deki callback_query_handler buradaki callback_data'lara bakacak
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("⏸ Durdur", callback_data="pause"),
          InlineKeyboardButton("▶️ Oynat", callback_data="resume")],
@@ -19,23 +20,24 @@ def get_player_ui():
     ])
 
 def format_playing_message(song_info, requested_by):
+    # 'Zirve2' ibaresini isteğine göre korudum veya silebilirsin
     return (f"🎶 **Şu anda çalıyor**\n\n📌 **Şarkı:** [{song_info['title']}]({song_info['webpage_url']})\n"
-            f"👤 **İsteyen:** {requested_by}\n\n⚡️ *Zirve2 Keyifli Dinlemeler Diler!*")
+            f"👤 **İsteyen:** {requested_by}\n\n⚡️ *Keyifli Dinlemeler Diler!*")
 
 async def add_to_queue_or_play(chat_id, song_info, requested_by):
     global music_queue, call
     if chat_id not in music_queue: music_queue[chat_id] = []
-    if len(music_queue[chat_id]) >= 10: return "FULL"
+    if len(music_queue[chat_id]) >= 15: return "FULL" # Sınırı 15 yaptım
 
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
 
     if len(music_queue[chat_id]) == 1:
         try:
-            # SES GELMEME SORUNUNU ÇÖZEN FFMPEG PARAMETRELERİ
+            # SES GELME GARANTİLİ FFMPEG PARAMETRELERİ (libopus eklendi)
             await call.play(chat_id, MediaStream(
                 song_info["file_path"], 
                 video_flags=MediaStream.Flags.IGNORE,
-                ffmpeg_parameters="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+                ffmpeg_parameters="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -vn -acodec libopus -b:a 128k -ar 48000 -ac 2"
             ))
             return "PLAYING"
         except Exception as e:
@@ -45,11 +47,12 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     return "QUEUED"
 
 async def stream_end_handler(chat_id):
+    """Şarkı bittiğinde veya skip atıldığında sıradakine geçer"""
     global last_message_ids, music_queue
     if chat_id in music_queue and len(music_queue[chat_id]) > 0:
-        music_queue[chat_id].pop(0)
+        music_queue[chat_id].pop(0) # Çalanı çıkar
         
-        # Eski mesajı temizle
+        # Eski mesajı temizle (Gruptaki kirliliği önler)
         if chat_id in last_message_ids:
             try: await bot.delete_messages(chat_id, last_message_ids[chat_id])
             except: pass
@@ -60,8 +63,9 @@ async def stream_end_handler(chat_id):
                 await call.play(chat_id, MediaStream(
                     next_song["info"]["file_path"], 
                     video_flags=MediaStream.Flags.IGNORE,
-                    ffmpeg_parameters="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+                    ffmpeg_parameters="-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -vn -acodec libopus -b:a 128k"
                 ))
+                
                 sent_msg = await bot.send_photo(
                     chat_id=chat_id,
                     photo=next_song['info']['thumbnail'],
@@ -70,9 +74,11 @@ async def stream_end_handler(chat_id):
                 )
                 last_message_ids[chat_id] = sent_msg.id
                 return next_song
-            except:
+            except Exception as e:
+                print(f"❌ Geçiş Hatası: {e}")
                 return await stream_end_handler(chat_id)
         else:
+            # Kuyruk bitti
             music_queue.pop(chat_id, None)
             try:
                 await call.leave_call(chat_id)
@@ -81,20 +87,35 @@ async def stream_end_handler(chat_id):
             return "EMPTY"
     return None
 
-# --- LOGLARDAKİ AttributeError HATALARINI ÇÖZEN FONKSİYONLAR ---
+# --- KOMUTLAR VE BUTONLAR İÇİN GEREKLİ TÜM FONKSİYONLAR ---
+
 def clear_entire_queue(chat_id):
-    """Tüm kuyruğu temizler (stop komutu için)"""
+    """/stop veya 'Bitir' butonu için"""
     if chat_id in music_queue:
         music_queue.pop(chat_id, None)
 
 def clear_queue_except_current(chat_id):
-    """Şu an çalan hariç kuyruğu temizler"""
+    """Sadece sırayı temizler, çalan devam eder"""
     if chat_id in music_queue and len(music_queue[chat_id]) > 1:
         current = music_queue[chat_id][0]
         music_queue[chat_id] = [current]
 
 def remove_song_from_queue(chat_id, index):
-    """Belirli bir şarkıyı kuyruktan siler (del komutu için)"""
+    """/del komutu için"""
     if chat_id in music_queue and 0 <= index < len(music_queue[chat_id]):
         return music_queue[chat_id].pop(index)
     return None
+
+async def pause_stream(chat_id):
+    """/pause veya 'Durdur' butonu için"""
+    try:
+        await call.pause_stream(chat_id)
+        return True
+    except: return False
+
+async def resume_stream(chat_id):
+    """/resume veya 'Oynat' butonu için"""
+    try:
+        await call.resume_stream(chat_id)
+        return True
+    except: return False
