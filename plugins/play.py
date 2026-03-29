@@ -59,41 +59,41 @@ async def play_cmd(client, message: Message):
     except Exception as e:
         await message.reply(f"❌ **Hata:** {str(e)[:50]}")
 
-# --- DURDUR/BEKLET KOMUTLARI ---
+# --- DURDUR / DEVAM ET KOMUTLARI ---
 @Client.on_message(filters.command(["stop", "dur", "pause", "durdur"]) & filters.group)
 async def pause_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
     if await player.pause_stream(message.chat.id):
         await message.reply("⏸ **Müzik duraklatıldı.**")
 
-# --- DEVAM ET KOMUTLARI ---
 @Client.on_message(filters.command(["devam", "resume", "r"]) & filters.group)
 async def resume_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
     if await player.resume_stream(message.chat.id):
         await message.reply("▶️ **Müzik kaldığı yerden devam ediyor.**")
 
-# --- ATLA (SKIP) KOMUTLARI ---
+# --- ATLA KOMUTU ---
 @Client.on_message(filters.command(["skip", "geç", "atla"]) & filters.group)
 async def skip_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
+    # action="skip" parametresi player.py'deki o "Atlanan Şarkı" formatını tetikler.
     await player.stream_end_handler(message.chat.id, action="skip")
 
-# --- BİTİR (END) KOMUTLARI ---
+# --- BİTİR KOMUTU ---
 @Client.on_message(filters.command(["end", "bitir", "son"]) & filters.group)
 async def end_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
     player.clear_entire_queue(message.chat.id)
     await player.stream_end_handler(message.chat.id, action="end")
 
-# --- TEMİZLE (SIL) KOMUTLARI ---
+# --- SİL KOMUTU ---
 @Client.on_message(filters.command(["sil", "temizle", "clear"]) & filters.group)
 async def clean_text_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
     player.clear_queue_except_current(message.chat.id)
     await message.reply("🗑️ **Kuyruk temizlendi (Çalan hariç).**")
 
-# --- BUTONLAR (SPAM/FLOOD KORUMALI) ---
+# --- BUTONLAR ---
 @Client.on_callback_query(filters.regex("^(pause|resume|skip|end)$"))
 async def player_callbacks(client, query: CallbackQuery):
     c_id = query.message.chat.id
@@ -109,3 +109,8 @@ async def player_callbacks(client, query: CallbackQuery):
             await query.answer("⏭ Atlanıyor...")
             await player.stream_end_handler(c_id, action="skip")
         elif query.data == "end":
+            await query.answer("⏹ Bitiriliyor...")
+            player.clear_entire_queue(c_id)
+            await player.stream_end_handler(c_id, action="end")
+    except FloodWait as e:
+        await asyncio.sleep(e.value)
