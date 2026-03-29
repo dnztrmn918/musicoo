@@ -1,6 +1,7 @@
 import asyncio
 import os
 from pytgcalls.types import MediaStream
+from pytgcalls import filters as fl # Handler filtreleri eklendi
 
 # Global değişkenler (main.py tarafından doldurulacak)
 music_queue = {}
@@ -15,7 +16,6 @@ def safe_delete(file_path):
     if not file_path or not os.path.exists(file_path):
         return
     
-    # Şarkı hala başka bir grubun kuyruğunda var mı diye kontrol ediyoruz
     is_used = False
     for queue in music_queue.values():
         for song in queue:
@@ -30,11 +30,9 @@ def safe_delete(file_path):
             print(f"🗑️ Temizlik: {file_path} sunucudan silindi.")
         except Exception as e:
             print(f"⚠️ Dosya silinemedi: {e}")
-# ---------------------------------------------
 
 def get_player_ui():
     from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-    # Bu butonlar plugins/play.py içindeki callback_query_handler ile konuşur
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("⏸ Duraklat", callback_data="pause"),
          InlineKeyboardButton("▶️ Devam", callback_data="resume")],
@@ -43,7 +41,6 @@ def get_player_ui():
     ])
 
 def format_playing_message(song_info, requested_by):
-    # Süre bilgisi varsa al, yoksa 'Bilinmiyor' yaz
     duration = song_info.get('duration', 'Bilinmiyor')
     return (
         f"🎶 **Pi Müzik Oynatılıyor**\n\n"
@@ -62,7 +59,6 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
-            # FİZİKSEL DOSYA ÇALINDIĞI İÇİN FFMPEG PARAMETRELERİ SADELEŞTİRİLDİ
             await call.play(chat_id, MediaStream(
                 song_info["file_path"], 
                 video_flags=MediaStream.Flags.IGNORE
@@ -71,7 +67,7 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
         except Exception as e:
             if chat_id in music_queue: 
                 failed_song = music_queue[chat_id].pop(0)
-                safe_delete(failed_song["info"]["file_path"]) # Hata verirse direkt sil
+                safe_delete(failed_song["info"]["file_path"])
             print(f"❌ Oynatma Hatası: {e}")
             return f"ERROR: {str(e)}"
     return "QUEUED"
@@ -81,11 +77,9 @@ async def stream_end_handler(chat_id):
     global last_message_ids, music_queue
     if chat_id in music_queue and len(music_queue[chat_id]) > 0:
         
-        # Biten şarkıyı kuyruktan çıkar ve sunucudan SİL
         finished_song = music_queue[chat_id].pop(0)
         safe_delete(finished_song["info"]["file_path"])
         
-        # Eski mesajı temizle
         if chat_id in last_message_ids:
             try: await bot.delete_messages(chat_id, last_message_ids[chat_id])
             except: pass
@@ -93,7 +87,6 @@ async def stream_end_handler(chat_id):
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
-                # SIRADAKİ FİZİKSEL DOSYAYI ÇAL
                 await call.play(chat_id, MediaStream(
                     next_song["info"]["file_path"], 
                     video_flags=MediaStream.Flags.IGNORE
@@ -111,7 +104,7 @@ async def stream_end_handler(chat_id):
                 print(f"❌ Geçiş Hatası: {e}")
                 return await stream_end_handler(chat_id)
         else:
-            # Liste boşaldı
+            # Liste boşaldı - ASİSTAN ÇIKIYOR
             music_queue.pop(chat_id, None)
             try:
                 await call.leave_call(chat_id)
@@ -119,6 +112,12 @@ async def stream_end_handler(chat_id):
             except: pass
             return "EMPTY"
     return None
+
+# --- OTOMATİK BİTİŞ DİNLEYİCİSİ ---
+@call.on_update(fl.stream_ended())
+async def stream_ended_handler(_, update):
+    # Bu handler şarkı bittiğinde senin fonksiyonunu tetikler
+    return await stream_end_handler(update.chat_id)
 
 # --- YÖNETİM FONKSİYONLARI ---
 
@@ -148,12 +147,10 @@ async def pause_stream(chat_id):
     try:
         await call.pause_stream(chat_id)
         return True
-    except Exception:
-        return False
+    except Exception: return False
 
 async def resume_stream(chat_id):
     try:
         await call.resume_stream(chat_id)
         return True
-    except Exception:
-        return False
+    except Exception: return False
