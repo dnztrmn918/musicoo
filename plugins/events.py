@@ -16,21 +16,21 @@ def get_readable_time(seconds: int) -> str:
 
 # --- ŞARKI BİTİŞ OLAYI (DECORATOR KALDIRILDI - ÇAKIŞMA ÖNLENDİ) ---
 async def on_stream_end_handler(client, update):
-    if True:
-        chat_id = update.chat_id
-        result = await player.stream_end_handler(chat_id)
-        
-        from main import bot
-        if result == "EMPTY":
-            await bot.send_message(chat_id, "🛑 **Kuyruk bitti, asistan sesten ayrıldı.** 👋")
-        elif result:
-            thumb = result["info"].get("thumbnail") or "https://telegra.ph/file/69204068595f57731936c.jpg"
-            await bot.send_photo(
-                chat_id, 
-                photo=thumb, 
-                caption=player.format_playing_message(result["info"], result["by"]), 
-                reply_markup=player.get_player_ui()
-            )
+    # Gereksiz "if True:" bloğu silinip kod hizalandı
+    chat_id = update.chat_id
+    result = await player.stream_end_handler(chat_id)
+    
+    from main import bot
+    if result == "EMPTY":
+        await bot.send_message(chat_id, "🛑 **Kuyruk bitti, asistan sesten ayrıldı.** 👋")
+    elif result:
+        thumb = result["info"].get("thumbnail") or "https://telegra.ph/file/69204068595f57731936c.jpg"
+        await bot.send_photo(
+            chat_id, 
+            photo=thumb, 
+            caption=player.format_playing_message(result["info"], result["by"]), 
+            reply_markup=player.get_player_ui()
+        )
 
 # --- BOT GRUBA EKLENDİĞİNDE ---
 @Client.on_message(filters.new_chat_members)
@@ -68,7 +68,8 @@ async def reload_system(client, message):
 @Client.on_message(filters.video_chat_ended)
 async def video_chat_ended(client, message: Message):
     player.clear_entire_queue(message.chat.id)
-    try: await player.call.leave_group_call(message.chat.id)
+    # KRİTİK DEĞİŞİKLİK: leave_group_call artık V2'ye uygun şekilde leave_call oldu
+    try: await player.call.leave_call(message.chat.id)
     except: pass
     
     start_time = active_voice_chats.pop(message.chat.id, None)
