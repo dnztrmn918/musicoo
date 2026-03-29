@@ -1,6 +1,6 @@
 import asyncio
 import os
-from pytgcalls.types import MediaStream
+from pytgcalls.types import MediaStream, AudioQuality
 from pytgcalls import filters as fl
 import gc
 
@@ -11,12 +11,15 @@ call = None
 userbot = None
 bot = None
 
-# v2.x için en stabil FFmpeg parametreleri (URL kopmalarını engeller)
-FFMPEG_PARAMS = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
+# 🔥 v2.x İÇİN EN STABİL PARAMETRELER: Headers eklendi (Ses gelmeme sorununu çözer)
+FFMPEG_PARAMS = (
+    '-headers "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" '
+    '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
+)
 
 # --- AKILLI SİLME FONKSİYONU ---
 def safe_delete(file_path):
-    """Eğer dosya bir yerel yolsa ve başka grupta çalınmıyorsa siler"""
+    """Fiziksel indirme kalıntılarını temizler"""
     if not file_path or not os.path.exists(file_path):
         return
     
@@ -64,17 +67,17 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
-            # 🔥 KRİTİK: URL'den ses gelmesi için ffmpeg_parameters eklendi
+            # 🔥 ONLINE LİNK İÇİN DOĞRU YAPILANDIRMA
             await call.play(chat_id, MediaStream(
                 song_info["file_path"], 
                 video_flags=MediaStream.Flags.IGNORE,
-                ffmpeg_parameters=FFMPEG_PARAMS
+                ffmpeg_parameters=FFMPEG_PARAMS,
+                audio_parameters=AudioQuality.HIGH
             ))
             return "PLAYING"
         except Exception as e:
             if chat_id in music_queue: 
-                failed_song = music_queue[chat_id].pop(0)
-                safe_delete(failed_song["info"]["file_path"])
+                music_queue[chat_id].pop(0)
             print(f"❌ Oynatma Hatası: {e}")
             return f"ERROR: {str(e)}"
     return "QUEUED"
@@ -94,11 +97,11 @@ async def stream_end_handler(chat_id):
         if len(music_queue[chat_id]) > 0:
             next_song = music_queue[chat_id][0]
             try:
-                # 🔥 KRİTİK: Sıradaki şarkı için de parametreler eklendi
                 await call.play(chat_id, MediaStream(
                     next_song["info"]["file_path"], 
                     video_flags=MediaStream.Flags.IGNORE,
-                    ffmpeg_parameters=FFMPEG_PARAMS
+                    ffmpeg_parameters=FFMPEG_PARAMS,
+                    audio_parameters=AudioQuality.HIGH
                 ))
                 
                 sent_msg = await bot.send_photo(
@@ -108,7 +111,6 @@ async def stream_end_handler(chat_id):
                     reply_markup=get_player_ui()
                 )
                 last_message_ids[chat_id] = sent_msg.id
-                return next_song
             except Exception as e:
                 print(f"❌ Geçiş Hatası: {e}")
                 return await stream_end_handler(chat_id)
@@ -118,14 +120,12 @@ async def stream_end_handler(chat_id):
                 await call.leave_call(chat_id)
                 await bot.send_message(chat_id, "⏹ **Kuyruk bitti, Pi Müzik sesten ayrıldı.**")
             except: pass
-            return "EMPTY"
     return None
 
-# --- OTOMATİK BİTİŞ FONKSİYONU ---
 async def stream_ended_handler_wrapper(_, update):
     return await stream_end_handler(update.chat_id)
 
-# --- YÖNETİM FONKSİYONLARI ---
+# --- YÖNETİM FONKSİYONLARI (Kilitlenmeyi Önleyen Yapı) ---
 
 def clear_entire_queue(chat_id):
     if chat_id in music_queue:
@@ -138,10 +138,10 @@ async def pause_stream(chat_id):
     try:
         await call.pause_stream(chat_id)
         return True
-    except Exception: return False
+    except: return False
 
 async def resume_stream(chat_id):
     try:
         await call.resume_stream(chat_id)
         return True
-    except Exception: return False
+    except: return False
