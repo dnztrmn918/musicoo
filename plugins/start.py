@@ -29,7 +29,7 @@ async def start(client, message):
     
     start_text = (
         f"✨ **Merhaba {message.from_user.mention}!**\n\n"
-        f"🚀 **Nowa-Müzik Sistemine Hoş Geldin!**\n\n"
+        f"🚀 **Pi-Müzik Sistemine Hoş Geldin!**\n\n"
         f"🎶 Gruplarında sesli sohbet üzerinden kesintisiz, "
         f"yüksek kaliteli müzik deneyimi için buradayım.\n\n"
         f"📊 **Güncel Sistem Verileri:**\n"
