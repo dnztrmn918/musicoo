@@ -7,10 +7,10 @@ from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
 import config
 
-# --- EKSİK OLAN DEĞİŞKEN (Hata Çözücü) ---
+# --- EKSİK OLAN DEĞİŞKEN ---
 START_TIME = time.time() 
 
-# --- KOYEB KANDIRMA SERVİSİ ---
+# --- KOYEB CANLI TUTMA SERVİSİ (HTTP SERVER) ---
 class DummyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -24,32 +24,66 @@ def run_dummy_server():
         httpd.serve_forever()
     except: pass
 
+# HTTP Server'ı ayrı bir thread'de başlatıyoruz
 threading.Thread(target=run_dummy_server, daemon=True).start()
 
 # --- BOT İSTEMCİLERİ ---
-bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot_token=config.BOT_TOKEN, plugins=dict(root="plugins"))
-userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION)
+# Plugins (Eklentiler) klasörünü tanımlıyoruz
+plugins = dict(root="plugins")
+
+bot = Client(
+    "pi_music_bot", 
+    api_id=config.API_ID, 
+    api_hash=config.API_HASH, 
+    bot_token=config.BOT_TOKEN, 
+    plugins=plugins
+)
+
+userbot = Client(
+    "pi_assistant", 
+    api_id=config.API_ID, 
+    api_hash=config.API_HASH, 
+    session_string=config.SESSION
+)
+
+# Sesli sohbet motoru
 call = PyTgCalls(userbot)
 
 async def main():
     print("🚀 Sistem başlatılıyor...")
     
-    # 1. Asistan ve Motoru Başlat
-    await userbot.start()
-    await call.start()
-    print("📞 Ses Motoru hazır!")
+    # 1. VERİTABANI BAĞLANTISINI KUR (NoneType hatasını çözer)
+    try:
+        from database import init_db
+        await init_db()
+    except Exception as e:
+        print(f"⚠️ Veritabanı başlatılamadı: {e}")
 
-    # 2. PLAYER'I EŞİTLE
+    # 2. İSTEMCİLERİ BAŞLAT
+    await userbot.start()
+    await bot.start()
+    await call.start()
+    print("📞 Ses Motoru ve Bot hazır!")
+
+    # 3. PLAYER MODÜLÜNÜ EŞİTLE (Hayati Önem Taşıyor)
     import player
     player.call = call
     player.userbot = userbot
     player.bot = bot
     
-    # 3. Botu Başlat
-    await bot.start()
-    print("✅ Bot ve Asistan başarıyla aktif edildi!")
+    # Botun kullanıcı adını loglara yazalım
+    me = await bot.get_me()
+    print(f"✅ Bot (@{me.username}) ve Asistan başarıyla aktif edildi!")
     
+    # Botu açık tut
     await idle()
 
 if __name__ == "__main__":
-    asyncio.get_event_loop().run_until_complete(main())
+    # Python 3.10+ için en stabil çalıştırma yöntemi
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(main())
+    except KeyboardInterrupt:
+        pass
+    except Exception as err:
+        print(f"❌ Ana döngü hatası: {err}")
