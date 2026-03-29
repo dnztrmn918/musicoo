@@ -5,6 +5,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
+from pytgcalls import filters as fl
 import config
 import player 
 
@@ -30,12 +31,6 @@ bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot
 userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION)
 call = PyTgCalls(userbot)
 
-# 🔥 v2.x İÇİN %100 DOĞRU VE ÇAKISMAYAN DİNLEYİCİ
-@call.on_stream_end()
-async def stream_end_handler_main(client, update):
-    # Şarkı bittiğinde player.py'deki sıradakine geçme fonksiyonunu tetikler
-    await player.stream_end_handler(update.chat_id)
-
 async def main():
     print("🚀 Sistem başlatılıyor...")
     try:
@@ -51,6 +46,9 @@ async def main():
     player.call = call
     player.userbot = userbot
     player.bot = bot
+
+    # 🔥 SENİN SÜRÜMÜNE (v2.2.11) %100 UYGUN DİNLEYİCİ
+    call.on_update(fl.stream_ended())(player.stream_ended_handler_wrapper)
 
     me = await bot.get_me()
     print(f"✅ Bot (@{me.username}) başarıyla aktif edildi!")
