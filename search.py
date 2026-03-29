@@ -16,6 +16,7 @@ def search_youtube(query):
         search_query = f"{engine['code']}{query}"
         file_name = f"downloads/{uuid.uuid4().hex}.%(ext)s"
         
+        # Temel yt-dlp ayarları
         ydl_opts = {
             "format": "bestaudio/best",
             "outtmpl": file_name,
@@ -24,9 +25,16 @@ def search_youtube(query):
             "nocheckcertificate": True,
             "geo_bypass": True,
             "noplaylist": True,
-            "cookiefile": "cookies.txt" if os.path.exists("cookies.txt") else None,
-            "source_address": "0.0.0.0" 
+            "source_address": "0.0.0.0",
+            # YouTube bot engelini aşmak için yt-dlp'yi Android gibi gösteriyoruz:
+            "extractor_args": {"youtube": {"player_client": ["android", "web"]}}
         }
+
+        # Çerez (Cookie) dosyasını sisteme entegre ediyoruz
+        if os.path.exists("cookies.txt"):
+            ydl_opts["cookiefile"] = "cookies.txt"
+        else:
+            print("⚠️ DİKKAT: 'cookies.txt' dosyası bulunamadı! YouTube indirmesi başarısız olabilir.")
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
