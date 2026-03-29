@@ -58,7 +58,7 @@ async def play_cmd(client, message: Message):
     except Exception as e: 
         await msg.edit(f"❌ **Hata:** {str(e)}")
 
-# --- BUTONLARI (CALLBACK) YÖNETEN KISIM (EKSİKTİ) ---
+# --- BUTONLARI (CALLBACK) YÖNETEN KISIM ---
 @Client.on_callback_query(filters.regex("^(pause|resume|skip|end)$"))
 async def player_callbacks(client, query: CallbackQuery):
     chat_id = query.message.chat.id
@@ -77,7 +77,9 @@ async def player_callbacks(client, query: CallbackQuery):
         else: await query.answer("❌ İşlem başarısız.")
 
     elif data == "skip":
-        await query.answer("⏭ Sıradaki şarkıya geçiliyor...")
+        await query.answer("⏭ Şarkı atlandı!", show_alert=False)
+        # Şarkı atlandı bilgisini gruba atıyoruz, ardından player.py yeni şarkı mesajını (Şarkı geçildi) atacak.
+        await client.send_message(chat_id, "⏭ **Şarkı atlandı!**")
         await player.stream_end_handler(chat_id)
 
     elif data == "end":
@@ -94,6 +96,7 @@ async def player_callbacks(client, query: CallbackQuery):
 @Client.on_message(filters.command(["skip", "atla"]) & filters.group)
 async def skip_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
+    await message.reply("⏭ **Şarkı atlandı!**")
     await player.stream_end_handler(message.chat.id)
 
 @Client.on_message(filters.command(["stop", "end", "kapat"]) & filters.group)
@@ -112,8 +115,23 @@ async def queue_cmd(client, message: Message):
     chat_queue = player.music_queue.get(message.chat.id, [])
     if not chat_queue: return await message.reply("📂 **Kuyruk şu an boş.**")
     
-    text = f"📜 **{BOT_NAME} - Müzik Kuyruğu**\n\n"
+    # Çok daha şık bir kuyruk tasarımı
+    text = f"🎵 **{BOT_NAME} - Canlı Müzik Kuyruğu** 🎵\n━━━━━━━━━━━━━━━━━━━━\n\n"
     for i, song in enumerate(chat_queue):
-        status = "🎧 **Çalan:**" if i == 0 else f"**{i}.**"
-        text += f"{status} {song['info']['title']}\n"
-    await message.reply(text, disable_web_page_preview=True)
+        if i == 0:
+            text += f"🎧 **Şu An Çalan:**\n └ 🎶 `{song['info']['title']}`\n\n"
+            if len(chat_queue) > 1:
+                text += "⏳ **Sıradakiler:**\n"
+        else:
+            text += f" `{i}.` 📌 {song['info']['title']}\n"
+    
+    text += "\n━━━━━━━━━━━━━━━━━━━━"
+    
+    # Resim dosyasının yolunu kontrol et (ana dizinde veya plugins klasöründe olabilir)
+    que_photo = "que.png" if os.path.exists("que.png") else "plugins/que.png" if os.path.exists("plugins/que.png") else None
+
+    if que_photo:
+        await message.reply_photo(photo=que_photo, caption=text)
+    else:
+        # Eğer resim bulunamazsa normal mesaj olarak atar
+        await message.reply(text, disable_web_page_preview=True)
