@@ -138,4 +138,22 @@ def clear_queue_except_current(chat_id):
             safe_delete(song["info"]["file_path"])
 
 def remove_song_from_queue(chat_id, index):
-    if chat_id in music_queue and 0 <= index
+    if chat_id in music_queue and 0 <= index < len(music_queue[chat_id]):
+        removed_song = music_queue[chat_id].pop(index)
+        safe_delete(removed_song["info"]["file_path"])
+        return removed_song
+    return None
+
+async def pause_stream(chat_id):
+    try:
+        await call.pause_stream(chat_id)
+        return True
+    except Exception:
+        return False
+
+async def resume_stream(chat_id):
+    try:
+        await call.resume_stream(chat_id)
+        return True
+    except Exception:
+        return False
