@@ -5,7 +5,6 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
-from pytgcalls import filters as fl
 import config
 import player 
 
@@ -31,6 +30,14 @@ bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot
 userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION)
 call = PyTgCalls(userbot)
 
+# 🔥 SÜRÜM ÇAKIŞMASINI ÇÖZEN DİNAMİK DİNLEYİCİ
+@call.on_update()
+async def global_update_handler(client, update):
+    # Objenin adını alarak import veya attribute hatalarını sonsuza dek önlüyoruz
+    update_name = update.__class__.__name__
+    if update_name in ["StreamAudioEnded", "StreamVideoEnded", "StreamEnd"]:
+        await player.stream_end_handler(update.chat_id, action="auto")
+
 async def main():
     print("🚀 Sistem başlatılıyor...")
     try:
@@ -46,9 +53,6 @@ async def main():
     player.call = call
     player.userbot = userbot
     player.bot = bot
-
-    # 🔥 SENİN SÜRÜMÜNE (v2.2.11) %100 UYGUN DİNLEYİCİ
-    call.on_update(fl.stream_ended())(player.stream_ended_handler_wrapper)
 
     me = await bot.get_me()
     print(f"✅ Bot (@{me.username}) başarıyla aktif edildi!")
