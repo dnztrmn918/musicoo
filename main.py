@@ -5,7 +5,6 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
-from pytgcalls.types import Update # Güncel v2 yapısı için eklendi
 import config
 import player 
 
@@ -25,37 +24,19 @@ def run_dummy_server():
     except: pass
 
 threading.Thread(target=run_dummy_server, daemon=True).start()
-
 plugins = dict(root="plugins")
 
-bot = Client(
-    "pi_music_bot", 
-    api_id=config.API_ID, 
-    api_hash=config.API_HASH, 
-    bot_token=config.BOT_TOKEN, 
-    plugins=plugins
-)
-
-userbot = Client(
-    "pi_assistant", 
-    api_id=config.API_ID, 
-    api_hash=config.API_HASH, 
-    session_string=config.SESSION
-)
-
+bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot_token=config.BOT_TOKEN, plugins=plugins)
+userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION)
 call = PyTgCalls(userbot)
 
-# 🔥 EN GARANTİ DİNLEYİCİ MANTIĞI:
-# Filtrelerle uğraşmadan, gelen her güncellemeyi kontrol eder.
-@call.on_update()
-async def handle_updates(client, update):
-    # Eğer gelen güncelleme bir 'StreamEnd' (yayın bitişi) ise:
-    if isinstance(update, Update.StreamEnd):
-        await player.stream_end_handler(update.chat_id)
+# 🔥 v2.x İÇİN DOĞRU DİNLEYİCİ
+@call.on_stream_end()
+async def stream_end_handler_main(client, update):
+    await player.stream_end_handler(update.chat_id)
 
 async def main():
     print("🚀 Sistem başlatılıyor...")
-    
     try:
         from database import init_db
         await init_db()
@@ -66,23 +47,16 @@ async def main():
     await bot.start()
     await call.start()
     
-    # Global atamalar
     player.call = call
     player.userbot = userbot
     player.bot = bot
 
-    print("📞 Ses Motoru ve Bot hazır!")
-    
     me = await bot.get_me()
     print(f"✅ Bot (@{me.username}) başarıyla aktif edildi!")
-    
     await idle()
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(main())
-    except KeyboardInterrupt:
-        pass
-    except Exception as err:
-        print(f"❌ Ana döngü hatası: {err}")
+    try: loop.run_until_complete(main())
+    except KeyboardInterrupt: pass
+    except Exception as err: print(f"❌ Ana döngü hatası: {err}")
