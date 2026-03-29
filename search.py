@@ -64,7 +64,6 @@ def _search_youtube_api(query):
 # ANA ARAMA VE İNDİRME MOTORU (YOUTUBE)
 # ──────────────────────────────────────────
 def search_youtube(query):
-    # KRİTİK DEĞİŞİKLİK: Artık sadece link almıyoruz, dosyayı sunucuya indiriyoruz.
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
@@ -74,7 +73,7 @@ def search_youtube(query):
         'geo_bypass': True,
         'cachedir': False,
         'noplaylist': True,
-        'outtmpl': '%(id)s.%(ext)s', # İndirilen dosyanın isim formatı
+        'outtmpl': '%(id)s.%(ext)s',
         'extractor_args': {
             'youtube': {
                 'player_client': ['android', 'web', 'ios'],
@@ -97,38 +96,15 @@ def search_youtube(query):
     for attempt in range(3):
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # KRİTİK NOKTA: download=True yapıldı. FFmpeg çökmeyecek!
                 info = ydl.extract_info(video_url, download=True)
                 
                 if not info: raise Exception("Ses bilgisi alınamadı.")
                 if isinstance(info, dict) and info.get('entries'): info = info['entries'][0]
                 
-                # 15 dakika sınırı
                 if info.get('duration', 0) > 15 * 60: raise Exception("15 dakikadan uzun")
                 
-                # İndirilen dosyanın tam yolunu alıyoruz
                 file_path = ydl.prepare_filename(info)
 
                 return {
                     'title': info.get('title') or title or query,
                     'thumbnail': info.get('thumbnail') or thumb or "https://telegra.ph/file/69204068595f57731936c.jpg",
-                    'file_path': file_path, # Yerel dosya yolu (örn: XyZ123.webm)
-                    'webpage_url': info.get('webpage_url') or video_url
-                }
-        except Exception as e:
-            last_err = str(e)
-            
-            # Eğer çerez/bot engeline takılırsa anında alternatiflere geç (Node.js kurtarıcısı)
-            if any(x in last_err.lower() for x in ["sign in", "confirm you're not a bot", "cookies"]):
-                deezer = search_deezer(query)
-                if deezer: return deezer
-                sc = search_soundcloud(query)
-                if sc: return sc
-                break
-                
-            # Geçici bağlantı kopmalarında tekrar dene
-            if any(x in last_err.lower() for x in ["network", "timeout", "try again", "temporarily"]):
-                continue
-            break
-
-    raise Exception(f"❌ Müzik Motoru Hatası: {last_err}")
