@@ -8,7 +8,6 @@ from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
 from pytgcalls.types import Update
 
-# main.py dosyasının en üstüne eklendi (circular import hatasını çözen kısım)
 START_TIME = time.time()
 
 sys.path.append('.')
@@ -35,12 +34,12 @@ bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot
 userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION)
 call = PyTgCalls(userbot)
 
-# 🔥 ÇÖKME HATASI GİDERİLDİ: ptg_filters veya eski StreamEndedUpdate YERİNE GÜVENLİ KONTROL KULLANILDI
+# 🔥 KESİN ÇÖZÜM: Sınıf ismini (Class name) kontrol ederek şarkı bitişini yakalıyoruz
 @call.on_update()
 async def global_update_handler(client, update: Update):
-    # stream_end await edilemez uyarısını ve kilitlenmeyi engellemek için string kontrolü yapıyoruz.
-    update_str = str(update).lower()
-    if "stream_end" in update_str or "finished" in update_str or "streamaudioended" in update_str:
+    update_name = type(update).__name__.lower()
+    
+    if "ended" in update_name or "finished" in update_name or "stream_end" in str(update).lower():
         try:
             chat_id = update.chat_id
             print(f"✅ Şarkı bitti, otomatiğe geçiliyor. Chat: {chat_id}")
