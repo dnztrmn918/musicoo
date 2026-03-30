@@ -6,14 +6,12 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
+from pytgcalls import filters as ptg_filters # Yeni filtre eklendi
+from pytgcalls.types import Update
 
-# Eklentilerin ana dizindeki modülleri görebilmesi için garanti yol
 sys.path.append('.')
-
 import config
 import player 
-
-START_TIME = time.time() 
 
 class DummyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -35,20 +33,18 @@ bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot
 userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION)
 call = PyTgCalls(userbot)
 
-@call.on_update()
-async def global_update_handler(client, update):
-    update_name = update.__class__.__name__
-    if update_name in ["StreamAudioEnded", "StreamVideoEnded", "StreamEnd"]:
-        print(f"✅ Şarkı bitti, otomatiğe geçiliyor. Chat: {update.chat_id}")
-        await player.stream_end_handler(update.chat_id, action="auto")
+# 🔥 OTOMATİK GEÇİŞİ SAĞLAYAN KRİTİK DİNLEYİCİ
+@call.on_update(ptg_filters.stream_end)
+async def global_update_handler(client, update: Update):
+    print(f"✅ Şarkı bitti, otomatiğe geçiliyor. Chat: {update.chat_id}")
+    await player.stream_end_handler(update.chat_id, action="auto")
 
 async def main():
     print("🚀 Pi Müzik Sistem başlatılıyor...")
     try:
         from database import init_db
         await init_db()
-    except Exception as e:
-        print(f"⚠️ Veritabanı uyarısı: {e}")
+    except Exception as e: print(f"⚠️ Veritabanı uyarısı: {e}")
 
     await userbot.start()
     await bot.start()
@@ -65,5 +61,4 @@ async def main():
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     try: loop.run_until_complete(main())
-    except KeyboardInterrupt: pass
     except Exception as err: print(f"❌ Ana döngü hatası: {err}")
