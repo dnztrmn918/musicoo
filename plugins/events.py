@@ -5,9 +5,11 @@ from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from database import add_served_chat, is_sudo
 import player
-from main import START_TIME
 import config
 
+# 🔥 ÇÖKME HATASINI GİDEREN KISIM: START_TIME artık doğrudan burada hesaplanıyor.
+# "from main import START_TIME" satırı silindi.
+START_TIME = time.time()
 active_voice_chats = {}
 
 def get_readable_time(seconds: int) -> str:
@@ -79,11 +81,9 @@ async def welcome_bot(client, message: Message):
 
 @Client.on_message(filters.video_chat_started)
 async def video_chat_started(client, message: Message):
-    # Başlangıç zamanını kaydet
     active_voice_chats[message.chat.id] = time.time()
     await message.reply_text("🔔 **Sesli Sohbet Başlatıldı!**\nMüzik açmak için `/play` yazabilirsiniz.")
 
-# 🔥 İYİLEŞTİRİLMİŞ SONLANDIRMA MESAJI
 @Client.on_message(filters.video_chat_ended)
 async def video_chat_ended(client, message: Message):
     chat_id = message.chat.id
@@ -93,7 +93,6 @@ async def video_chat_ended(client, message: Message):
     except: 
         pass
     
-    # Süre hesaplama ve mesaj oluşturma
     if chat_id in active_voice_chats:
         start_time = active_voice_chats.pop(chat_id)
         duration = get_readable_time(int(time.time() - start_time))
