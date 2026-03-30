@@ -10,7 +10,11 @@ userbot = None
 bot = None
 
 def safe_delete(file_path):
-    if not file_path or not os.path.exists(file_path): return
+    if not file_path: return
+    # 🔥 YENİ: Eğer bu bir URL ise (internet linki), silmeye çalışıp hata verme!
+    if file_path.startswith("http"): return
+    
+    if not os.path.exists(file_path): return
     is_used = any(song["info"].get("file_path") == file_path for queue in music_queue.values() for song in queue)
     if not is_used:
         try:
@@ -38,9 +42,8 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     global music_queue, call
     if chat_id not in music_queue: music_queue[chat_id] = []
     
-    # 🔥 YENİ: KUYRUK LİMİTİ (Maksimum 5 bekleyen şarkı + 1 çalan = 6)
     if len(music_queue[chat_id]) >= 6:
-        safe_delete(song_info["file_path"]) # RAM şişmesin diye indirilen dosyayı hemen sil
+        safe_delete(song_info["file_path"]) 
         return "FULL", None
 
     queue_pos = len(music_queue[chat_id])
@@ -48,6 +51,7 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
+            # MediaStream hem yerel dosya hem de internet URL'si çalabilir (Yayın başlar)
             await call.play(chat_id, MediaStream(song_info["file_path"]))
             return "PLAYING", None
         except Exception as e:
@@ -57,9 +61,7 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
     
     return "QUEUED", queue_pos
 
-# 🔥 YENİ: SIRADAKİ PARÇAYI SİLME FONKSİYONU
 def remove_from_queue(chat_id, index):
-    # Çalan parça 0. indekstedir. O yüzden sırada 1. olan, listede 1. indekstir.
     if chat_id in music_queue and len(music_queue[chat_id]) > index > 0:
         removed_song = music_queue[chat_id].pop(index)
         safe_delete(removed_song["info"].get("file_path"))
