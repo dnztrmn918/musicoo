@@ -1,12 +1,8 @@
 import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import Message
-from database import is_sudo, get_all_chats # Veritabanında tüm chatleri çeken fonksiyon varsayımıyla
+from database import is_sudo, get_served_chats, get_served_users
 import config
-
-# NOT: Veritabanınızda tüm grup ve kullanıcı ID'lerini kaydeden 
-# bir 'get_all_chats' fonksiyonu olduğunu varsayıyoruz. 
-# Eğer yoksa database.py dosyanıza eklemelisiniz.
 
 @Client.on_message(filters.command(["broadcast", "duyuru"]) & filters.private)
 async def broadcast_cmd(client: Client, message: Message):
@@ -23,12 +19,13 @@ async def broadcast_cmd(client: Client, message: Message):
 
     sent_msg = await message.reply("📢 **Duyuru başlatılıyor...**")
     
-    # Tüm chat ID'lerini al (Gruplar + Özel Mesajlar)
-    # database.py dosyanızda bu fonksiyonun tanımlı olduğundan emin olun
+    # Tüm chat ve kullanıcı ID'lerini veritabanından çekip birleştiriyoruz
     try:
-        all_chats = await get_all_chats() 
-    except:
-        return await sent_msg.edit("❌ **Veritabanından chat listesi alınamadı.**")
+        chats = await get_served_chats()
+        users = await get_served_users()
+        all_chats = chats + users
+    except Exception as e:
+        return await sent_msg.edit(f"❌ **Veritabanından chat listesi alınamadı.** Hata: {e}")
 
     done = 0
     failed = 0
