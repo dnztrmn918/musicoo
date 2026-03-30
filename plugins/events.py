@@ -17,10 +17,11 @@ def get_readable_time(seconds: int) -> str:
     elif m > 0: return f"{m} dakika, {s} sn"
     return f"{s} saniye"
 
-# --- BİLGİ KOMUTU (SADECE SUDO - LOG KANALINA GÖNDERİR) ---
+# --- BİLGİ KOMUTU (SADECE SUDO) ---
 @Client.on_message(filters.command(["bilgi", "info"]))
 async def system_info(client, message: Message):
-    if not await is_sudo(message.from_user.id): return
+    if not await is_sudo(message.from_user.id): 
+        return await message.reply("❌ **Üzgünüm, bu komut için yetkiniz bulunmamakta. Lütfen geliştirici ile görüşün.**")
     
     m = await message.reply("⚙️ Sistem verileri toplanıyor...")
     uptime = get_readable_time(int(time.time() - START_TIME))
@@ -40,17 +41,16 @@ async def system_info(client, message: Message):
     
     button = InlineKeyboardMarkup([[InlineKeyboardButton("👨‍💻 Geliştirici", url="https://t.me/dnztrmnn")]])
     
-    # Log kanalına gönder
     if hasattr(config, 'LOG_CHANNEL_ID') and config.LOG_CHANNEL_ID:
         try:
             await client.send_message(config.LOG_CHANNEL_ID, text, reply_markup=button)
             await m.edit("✅ **Sistem bilgileri Log Kanalına gönderildi.**")
         except Exception as e:
-            await m.edit(f"❌ Log kanalına gönderilemedi. ID'yi kontrol edin. Hata: `{e}`\n\n{text}")
+            await m.edit(f"❌ Log kanalına gönderilemedi. Hata: `{e}`\n\n{text}")
     else:
         await m.edit(text, reply_markup=button)
 
-# --- DURUM KOMUTU (GRUP İÇİ) ---
+# --- DURUM KOMUTU ---
 @Client.on_message(filters.command(["durum", "ping"]) & filters.group)
 async def ping_status(client, message: Message):
     start = time.time()
@@ -79,12 +79,26 @@ async def welcome_bot(client, message: Message):
 
 @Client.on_message(filters.video_chat_started)
 async def video_chat_started(client, message: Message):
+    # Başlangıç zamanını kaydet
     active_voice_chats[message.chat.id] = time.time()
     await message.reply_text("🔔 **Sesli Sohbet Başlatıldı!**\nMüzik açmak için `/play` yazabilirsiniz.")
 
+# 🔥 İYİLEŞTİRİLMİŞ SONLANDIRMA MESAJI
 @Client.on_message(filters.video_chat_ended)
 async def video_chat_ended(client, message: Message):
-    player.clear_entire_queue(message.chat.id)
-    try: await player.call.leave_call(message.chat.id)
-    except: pass
-    await message.reply_text("🔇 **Sesli sohbet sonlandırıldı.**")
+    chat_id = message.chat.id
+    player.clear_entire_queue(chat_id)
+    try: 
+        await player.call.leave_call(chat_id)
+    except: 
+        pass
+    
+    # Süre hesaplama ve mesaj oluşturma
+    if chat_id in active_voice_chats:
+        start_time = active_voice_chats.pop(chat_id)
+        duration = get_readable_time(int(time.time() - start_time))
+        final_msg = f"🔇 **Sesli sohbet sonlandırıldı.**\n⏱ **Sohbet toplam `{duration}` sürdü.**"
+    else:
+        final_msg = "🔇 **Sesli sohbet sonlandırıldı.**"
+        
+    await message.reply_text(final_msg)
