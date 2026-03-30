@@ -37,7 +37,7 @@ async def play_cmd(client, message: Message):
         try: await msg.delete()
         except: pass
 
-        # 🔥 YENİ: LİMİT KONTROLÜ
+        # 🔥 LİMİT KONTROLÜ
         if status == "FULL":
             return await message.reply("⚠️ **Kuyruk limiti doldu!**\nKuyruğa en fazla 5 şarkı eklenebilir. Şarkılar çaldıkça yer açılacaktır.")
 
@@ -64,6 +64,32 @@ async def play_cmd(client, message: Message):
     except Exception as e:
         await message.reply(f"❌ **Beklenmedik Hata:** {str(e)[:50]}")
 
+# 🔥 EKSİK OLAN KUYRUK LİSTESİ KOMUTU BURAYA EKLENDİ
+@Client.on_message(filters.command(["que", "list", "kuyruk", "liste"], prefixes=CMD_PREFIXES) & filters.group)
+async def queue_cmd(client, message: Message):
+    chat_id = message.chat.id
+    if chat_id not in player.music_queue or not player.music_queue[chat_id]:
+        return await message.reply("📂 **Kuyrukta şu an hiç şarkı yok.**")
+    
+    queue = player.music_queue[chat_id]
+    text = f"📜 **{BOT_NAME} Kuyruk Listesi**\n\n"
+    
+    current = queue[0]
+    text += f"🎧 **Şu An Çalan:**\n📌 `{current['info']['title']}`\n⏳ Süre: `{current['info'].get('duration', 'Bilinmiyor')}` | 👤 İsteyen: {current['by']}\n\n"
+    
+    if len(queue) > 1:
+        text += "⏳ **Sıradakiler:**\n"
+        for i, song in enumerate(queue[1:], start=1):
+            text += f"**{i}.** `{song['info']['title']}`\n├ ⏳ `{song['info'].get('duration', 'Bilinmiyor')}` | 👤 {song['by']}\n\n"
+    else:
+        text += "📭 **Sırada bekleyen başka şarkı yok.**"
+        
+    try:
+        # Ana dizinde que.png varsa listeyi şık bir resimle gönderir
+        if os.path.exists("que.png"): await message.reply_photo(photo="que.png", caption=text)
+        else: await message.reply(text)
+    except: await message.reply(text)
+
 @Client.on_message(filters.command(["stop", "pause", "dur", "durdur"], prefixes=CMD_PREFIXES) & filters.group)
 async def pause_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
@@ -86,7 +112,6 @@ async def end_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
     await player.stream_end_handler(message.chat.id, action="end")
 
-# 🔥 YENİ: GELİŞMİŞ SİL KOMUTU
 @Client.on_message(filters.command(["sil", "temizle", "clear"], prefixes=CMD_PREFIXES) & filters.group)
 async def clean_text_cmd(client, message: Message):
     if not await is_admin(client, message.chat.id, message.from_user.id): return
