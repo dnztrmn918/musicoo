@@ -6,10 +6,9 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
-from pytgcalls import filters as ptg_filters # Yeni filtre eklendi
 from pytgcalls.types import Update
 
-# main.py dosyanın en üstüne ekle
+# main.py dosyanın en üstüne ekle (events.py artık buradan okuyacak)
 START_TIME = time.time()
 
 sys.path.append('.')
@@ -36,11 +35,18 @@ bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot
 userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION)
 call = PyTgCalls(userbot)
 
-# 🔥 OTOMATİK GEÇİŞİ SAĞLAYAN KRİTİK DİNLEYİCİ
-@call.on_update(ptg_filters.stream_end)
+# 🔥 ÇÖKME HATASI GİDERİLDİ: ptg_filters yerine güvenli if kontrolü kullanıldı
+@call.on_update()
 async def global_update_handler(client, update: Update):
-    print(f"✅ Şarkı bitti, otomatiğe geçiliyor. Chat: {update.chat_id}")
-    await player.stream_end_handler(update.chat_id, action="auto")
+    # Eğer update mesajında şarkının bittiğine dair bir sinyal varsa yakala
+    update_str = str(update).lower()
+    if "stream_end" in update_str or "finished" in update_str or "streamaudioended" in update_str:
+        try:
+            chat_id = update.chat_id
+            print(f"✅ Şarkı bitti, otomatiğe geçiliyor. Chat: {chat_id}")
+            await player.stream_end_handler(chat_id, action="auto")
+        except Exception as e:
+            print(f"⚠️ Otomatik geçişte ufak bir hata: {e}")
 
 async def main():
     print("🚀 Pi Müzik Sistem başlatılıyor...")
