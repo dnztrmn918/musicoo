@@ -9,6 +9,9 @@ from pytgcalls import PyTgCalls
 from pytgcalls import filters as ptg_filters # Yeni filtre eklendi
 from pytgcalls.types import Update
 
+# main.py dosyanın en üstüne ekle
+START_TIME = time.time()
+
 sys.path.append('.')
 import config
 import player 
