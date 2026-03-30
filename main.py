@@ -7,8 +7,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pyrogram import Client, idle
 from pytgcalls import PyTgCalls
 from pytgcalls.types import Update
+from pytgcalls.types.stream import StreamEndedUpdate # Kesin çözüm için eklendi
 
-# main.py dosyanın en üstüne ekle (events.py artık buradan okuyacak)
 START_TIME = time.time()
 
 sys.path.append('.')
@@ -35,18 +35,17 @@ bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot
 userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION)
 call = PyTgCalls(userbot)
 
-# 🔥 ÇÖKME HATASI GİDERİLDİ: ptg_filters yerine güvenli if kontrolü kullanıldı
 @call.on_update()
 async def global_update_handler(client, update: Update):
-    # Eğer update mesajında şarkının bittiğine dair bir sinyal varsa yakala
-    update_str = str(update).lower()
-    if "stream_end" in update_str or "finished" in update_str or "streamaudioended" in update_str:
+    # ESKİ YÖNTEM: update_str = str(update).lower() -> Bazen yakalayamıyordu.
+    # YENİ YÖNTEM: Doğrudan 'StreamEndedUpdate' objesi mi diye bakıyoruz
+    if isinstance(update, StreamEndedUpdate):
         try:
             chat_id = update.chat_id
             print(f"✅ Şarkı bitti, otomatiğe geçiliyor. Chat: {chat_id}")
             await player.stream_end_handler(chat_id, action="auto")
         except Exception as e:
-            print(f"⚠️ Otomatik geçişte ufak bir hata: {e}")
+            print(f"⚠️ Otomatik geçişte hata: {e}")
 
 async def main():
     print("🚀 Pi Müzik Sistem başlatılıyor...")
