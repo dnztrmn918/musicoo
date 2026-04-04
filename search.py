@@ -1,12 +1,14 @@
 import yt_dlp
-import os
-import uuid
 
-if not os.path.exists("downloads"):
-    os.makedirs("downloads")
+# 🔥 YENİ: Süre Limiti Filtresi (Maksimum 600 saniye = 10 Dakika)
+def duration_filter(info, *, incomplete):
+    duration = info.get('duration')
+    if duration and duration > 600:
+        return "Şarkı çok uzun! Lütfen 10 dakikadan kısa bir parça seçin."
+    return None
 
 def search_youtube(query):
-    # Öncelik YouTube Müzik, sonra YouTube, en son SoundCloud
+    # Öncelik YouTube Music, sonra YouTube, en son SoundCloud
     engines = [
         {"name": "YouTube Music", "code": "ytmsearch1:"},
         {"name": "YouTube", "code": "ytsearch1:"},
@@ -15,19 +17,17 @@ def search_youtube(query):
     
     for engine in engines:
         search_query = f"{engine['code']}{query}"
-        file_name = f"downloads/{uuid.uuid4().hex}.%(ext)s"
         
         ydl_opts = {
             "format": "bestaudio[ext=m4a]/bestaudio/best",
-            "outtmpl": file_name,
             "quiet": True,
             "no_warnings": True,
             "nocheckcertificate": True,
             "geo_bypass": True,
             "noplaylist": True,
             "source_address": "0.0.0.0",
-            "cache_dir": False,  # 🔥 RAM ŞİŞMESİNİ VE BAĞLANTI KOPMASINI ENGELLEYEN SİHİRLİ AYAR
-            # YouTube Bypass
+            "cache_dir": False,
+            "match_filter": duration_filter, # 🔥 10 DAKİKA SINIRINI BURADA DEVREYE SOKTUK
             "extractor_args": {
                 "youtube": {
                     "player_client": ["android", "ios"], 
@@ -38,35 +38,37 @@ def search_youtube(query):
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
-                print(f"🔍 [{engine['name']}] Aranıyor ve İndiriliyor: {query}")
+                print(f"🔍 [{engine['name']}] Aranıyor (İndirmeden Anında Çalınacak): {query}")
                 
-                # 🔥 LİNKLER ÖLMESİN DİYE İNDİRMEYİ GERİ AÇTIK (download=True)
-                info = ydl.extract_info(search_query, download=True)
+                # 🔥 İNDİRMEYİ KAPATTIK (download=False)
+                info = ydl.extract_info(search_query, download=False)
                 
                 if 'entries' in info and len(info['entries']) > 0:
                     best_entry = info['entries'][0]
                 else:
                     best_entry = info
 
-                file_path = ydl.prepare_filename(best_entry)
-                if not os.path.exists(file_path):
-                    if "requested_downloads" in best_entry:
-                        file_path = best_entry["requested_downloads"][0]["filepath"]
+                stream_url = best_entry.get("url")
 
-                if not file_path or not os.path.exists(file_path):
-                    raise Exception("Fiziksel dosya bulunamadı.")
+                if not stream_url:
+                    raise Exception("Canlı yayın URL'si bulunamadı.")
 
                 duration_raw = best_entry.get('duration')
                 duration = f"{divmod(int(duration_raw), 60)[0]:02d}:{divmod(int(duration_raw), 60)[1]:02d}" if duration_raw else "Bilinmiyor"
 
                 return {
                     "title": best_entry.get('title', 'Bilinmeyen Parça'),
-                    "file_path": str(file_path),
+                    "file_path": stream_url, # Artık diske inen dosya değil, doğrudan internet adresi!
                     "thumbnail": best_entry.get('thumbnail', 'plugins/logo.jpg'),
                     "duration": duration,
                     "source": engine['name']
                 }
             except Exception as e:
+                # 10 dakikadan uzunsa diğer motorlara bakmadan direkt reddet
+                if "Şarkı çok uzun" in str(e):
+                    print(f"⚠️ {engine['name']} Reddedildi: Şarkı 10 dakikadan uzun.")
+                    raise Exception("10 dakikadan uzun parçalar açılamaz!")
+                
                 print(f"⚠️ {engine['name']} hatası: {str(e)[:40]}")
                 continue
 
