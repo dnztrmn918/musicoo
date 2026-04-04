@@ -51,7 +51,6 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
 
     if len(music_queue[chat_id]) == 1:
         try:
-            # MediaStream hem yerel dosya hem de internet URL'si çalabilir (Yayın başlar)
             await call.play(chat_id, MediaStream(song_info["file_path"]))
             return "PLAYING", None
         except Exception as e:
