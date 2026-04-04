@@ -26,6 +26,7 @@ def search_youtube(query):
             "geo_bypass": True,
             "noplaylist": True,
             "source_address": "0.0.0.0",
+            "cache_dir": False,  # 🔥 RAM ŞİŞMESİNİ VE BAĞLANTI KOPMASINI ENGELLEYEN SİHİRLİ AYAR
             # YouTube Bypass
             "extractor_args": {
                 "youtube": {
