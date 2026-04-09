@@ -11,7 +11,6 @@ bot = None
 
 def safe_delete(file_path):
     if not file_path: return
-    # 🔥 YENİ: Eğer bu bir URL ise (internet linki), silmeye çalışıp hata verme!
     if file_path.startswith("http"): return
     
     if not os.path.exists(file_path): return
@@ -46,7 +45,6 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
         safe_delete(song_info["file_path"]) 
         return "FULL", None
 
-    queue_pos = len(music_queue[chat_id])
     music_queue[chat_id].append({"info": song_info, "by": requested_by})
 
     if len(music_queue[chat_id]) == 1:
@@ -58,7 +56,7 @@ async def add_to_queue_or_play(chat_id, song_info, requested_by):
             safe_delete(song_info["file_path"])
             return "ERROR", f"{str(e)}"
     
-    return "QUEUED", queue_pos
+    return "QUEUED", len(music_queue[chat_id]) - 1
 
 def remove_from_queue(chat_id, index):
     if chat_id in music_queue and len(music_queue[chat_id]) > index > 0:
@@ -82,18 +80,22 @@ async def stream_end_handler(chat_id, action="auto"):
         await bot.send_message(chat_id, "🛑 **Yayın sonlandırıldı. Kuyruk temizlendi ve asistan sesli sohbetten ayrıldı.**")
         return
 
+    # EĞER KUYRUK VARSA İŞLEM YAP
     if chat_id in music_queue and len(music_queue[chat_id]) > 0:
+        # Biten şarkıyı listeden çıkar
         finished_song = music_queue[chat_id].pop(0)
         safe_delete(finished_song["info"].get("file_path"))
         
+        # Eski mesajı temizle
         if chat_id in last_message_ids:
             try: 
                 await bot.delete_messages(chat_id, last_message_ids[chat_id])
                 del last_message_ids[chat_id]
             except: pass
 
+        # SIRADA ŞARKI VAR MI?
         if len(music_queue[chat_id]) > 0:
-            next_song = music_queue[chat_id][0]
+            next_song = music_queue[chat_id][0] # Sıradaki şarkıyı al (ama çıkarma, o çalıyor olacak)
             try:
                 await call.play(chat_id, MediaStream(next_song["info"]["file_path"]))
                 
@@ -111,8 +113,10 @@ async def stream_end_handler(chat_id, action="auto"):
                 last_message_ids[chat_id] = sent_msg.id
             except Exception as e:
                 print(f"Sıradakine geçiş hatası: {e}")
+                # Hata verirse bir sonrakine geçmeyi dene
                 return await stream_end_handler(chat_id, action)
         else:
+            # Kuyruk tamamen bitti
             music_queue.pop(chat_id, None)
             try: await call.leave_call(chat_id)
             except: pass
@@ -122,6 +126,7 @@ async def stream_end_handler(chat_id, action="auto"):
             else:
                 await bot.send_message(chat_id, "🛑 **Kuyruk bitti, asistan sesten ayrıldı.**")
     else:
+        # Liste zaten boşsa
         try: await call.leave_call(chat_id)
         except: pass
 
