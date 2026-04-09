@@ -13,7 +13,7 @@ G_MESSAGES = [
     "Kahveler hazır mı? Günaydınlar! ☕",
     "Erkenci kuşlar buraya! Herkese günaydın. 🕊️",
     "Harika bir gün geçirmeniz dileğiyle, günaydın! 🌞",
-    "Sabahın ilk ışıklarıyla gruba enerji saçmaya geldim, günaydın! ⚡"
+    "Sabahın ilk ışıklarıyla gruba energy saçmaya geldim, günaydın! ⚡"
 ]
 
 I_MESSAGES = [
@@ -22,12 +22,11 @@ I_MESSAGES = [
     "İyi uykular, tatlı rüyalar. 😴",
     "Günün yorgunluğunu atma vakti, iyi geceler! 🌌",
     "Uyku perisi kapınızı çalsın, tatlı rüyalar! 🧚‍♀️",
-    "Yarın daha güzel bir güne uyanmak dileğiyle, iyi uykular. 🌃",
+    "Yarın daha güzel bir güne uyanmak dileğiyle, iyi uykular. 🌠",
     "Geceniz güzel, uykunuz derin olsun. 🌠",
     "Karanlığın huzuru üzerinize olsun, iyi geceler. 🦉"
 ]
 
-# 🔥 TOPLAM 20 ADET İNTERAKTİF SOHBET SORUSU 🔥
 S_MESSAGES = [
     "Elinizde tek bir gidiş bileti olsa şu an nereye uçardınız? ✈️",
     "Hayatınız bir film olsa arka planda şu an hangi şarkı çalardı? 🎵",
@@ -76,28 +75,40 @@ async def unified_tagger(client, message):
 
     cmd = message.command[0].lower()
     active_tagging[chat_id] = 0 
-    m = await message.reply(f"🚀 **{cmd.upper()}** işlemi başlatıldı!")
+    m = await message.reply(f"🚀 **{cmd.upper()}** işlemi (5'li gruplar halinde) başlatıldı!")
 
     try:
+        members = []
         async for member in client.get_chat_members(chat_id):
             if chat_id not in active_tagging: break
             if member.user.is_bot or member.user.is_deleted: continue
-            
-            # Komuta göre rastgele mesaj seçimi
-            if cmd in ["tag", "utag"]: 
-                tag_msg = message.text.split(None, 1)[1] if len(message.command) > 1 else "Etiketleniyorsunuz..."
-            elif cmd == "gtag": tag_msg = random.choice(G_MESSAGES)
-            elif cmd == "itag": tag_msg = random.choice(I_MESSAGES)
-            elif cmd == "stag": tag_msg = random.choice(S_MESSAGES)
-            elif cmd == "ktag": tag_msg = random.choice(K_MESSAGES)
+            members.append(member.user.mention)
 
-            try:
-                await client.send_message(chat_id, f"{tag_msg}\n👤 {member.user.mention}")
-                active_tagging[chat_id] += 1 
-                await asyncio.sleep(5) # Güvenli bekleme süresi
-            except:
-                await asyncio.sleep(8) # Hata durumunda dinlenme süresi
-                continue
+            # 5 kişiye ulaştığımızda veya döngü sonunda gönder
+            if len(members) == 5:
+                if cmd in ["tag", "utag"]: 
+                    tag_msg = message.text.split(None, 1)[1] if len(message.command) > 1 else "Etiketleniyorsunuz..."
+                elif cmd == "gtag": tag_msg = random.choice(G_MESSAGES)
+                elif cmd == "itag": tag_msg = random.choice(I_MESSAGES)
+                elif cmd == "stag": tag_msg = random.choice(S_MESSAGES)
+                elif cmd == "ktag": tag_msg = random.choice(K_MESSAGES)
+
+                mentions = " | ".join(members)
+                try:
+                    await client.send_message(chat_id, f"{tag_msg}\n\n{mentions}")
+                    active_tagging[chat_id] += len(members)
+                    members = [] # Listeyi boşalt
+                    await asyncio.sleep(3) # Gruplar arası daha hızlı bekleme
+                except:
+                    await asyncio.sleep(5)
+                    continue
+        
+        # Listede kalan son kişileri de etiketle (5'ten az kaldıysa)
+        if members and chat_id in active_tagging:
+            mentions = " | ".join(members)
+            await client.send_message(chat_id, f"Sona kalanlar:\n\n{mentions}")
+            active_tagging[chat_id] += len(members)
+
     finally:
         if chat_id in active_tagging:
             final_count = active_tagging.pop(chat_id)
