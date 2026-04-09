@@ -34,21 +34,18 @@ bot = Client("pi_music_bot", api_id=config.API_ID, api_hash=config.API_HASH, bot
 userbot = Client("pi_assistant", api_id=config.API_ID, api_hash=config.API_HASH, session_string=config.SESSION)
 call = PyTgCalls(userbot)
 
-# 🔥 GÜNCELLENMİŞ KISIM: Sadece şarkı gerçekten bittiğinde tetiklenir
 @call.on_update()
 async def global_update_handler(client, update: Update):
-    update_name = type(update).__name__.lower()
-    
-    # StreamEndUpdate veya StreamFinishedUpdate kontrolü
-    if "end" in update_name or "finish" in update_name:
-        try:
-            chat_id = update.chat_id
-            # Eğer o grupta hala aktif bir kuyruk listesi varsa işleme al
-            if chat_id in player.music_queue and len(player.music_queue[chat_id]) > 0:
-                print(f"✅ Şarkı bitti, otomatiğe geçiliyor. Chat: {chat_id}")
-                await player.stream_end_handler(chat_id, action="auto")
-        except Exception as e:
-            print(f"⚠️ Otomatik geçiş hatası: {e}")
+    if not isinstance(update, Update):
+        return
+
+    # Sadece Stream bittiğinde tetiklenir
+    update_type = type(update).__name__
+    if "StreamEndUpdate" in update_type or "StreamFinishedUpdate" in update_type:
+        chat_id = update.chat_id
+        if chat_id in player.music_queue:
+            # Şarkı bitti, player'a sıradakine geç emri ver
+            await player.stream_end_handler(chat_id, action="auto")
 
 async def main():
     print("🚀 Pi Müzik Sistem başlatılıyor...")
